@@ -1,17 +1,15 @@
-# mindcare
+# MindCare
 
-A mental health companion app for Filipino nursing students.
+A mental health companion mobile app for Filipino nursing students.
 
-## Getting Started
+Built with Flutter + Dart as part of a nursing thesis project.
 
-This project is a starting point for a Flutter application.
+## Tech Stack
+- Flutter + Riverpod 2.x
+- Supabase (cloud backend)
+- Google Gemini 1.5 Flash (AI chatbot)
+- TensorFlow Lite (on-device burnout prediction)
+- Hive + flutter_secure_storage (local encrypted storage)
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Status
+🚧 In active development
