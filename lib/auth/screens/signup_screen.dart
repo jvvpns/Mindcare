@@ -3,42 +3,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
-
 import '../../core/router/app_router.dart';
 import '../../core/utils/validators.dart';
 import '../providers/auth_provider.dart';
+import '../../core/services/hive_service.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class SignupScreen extends ConsumerStatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await ref.read(authProvider.notifier).signIn(
+    final success = await ref.read(authProvider.notifier).signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
 
     if (!mounted) return;
     if (success) {
-      context.go(AppRoutes.dashboard);
+      // First time user — go to tutorial
+      final tutorialSeen = HiveService.settingsBox
+          .get('tutorial_seen', defaultValue: false) as bool;
+      if (!tutorialSeen) {
+        context.go(AppRoutes.tutorial);
+      } else {
+        context.go(AppRoutes.dashboard);
+      }
     }
   }
 
@@ -46,7 +56,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
-    // Show error snackbar
     ref.listen(authProvider, (prev, next) {
       if (next.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -62,6 +71,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          onPressed: () => context.go(AppRoutes.login),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -70,19 +87,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
+                const SizedBox(height: 12),
 
                 // ── Header ──────────────────────────────────────────
-                Text('Welcome back', style: AppTextStyles.displayMedium),
+                Text('Create account', style: AppTextStyles.displayMedium),
                 const SizedBox(height: 6),
                 Text(
-                  'Sign in to your HILWAY account',
+                  'Join HILWAY and start your wellness journey',
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
 
-                const SizedBox(height: 36),
+                const SizedBox(height: 32),
 
                 // ── Email ────────────────────────────────────────────
                 TextFormField(
@@ -101,11 +118,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    helperText: 'At least 8 characters with 1 uppercase and 1 number',
+                    helperStyle: AppTextStyles.caption,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -118,14 +136,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           () => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  validator: (v) => v == null || v.isEmpty
-                      ? 'Password is required'
-                      : null,
+                  validator: Validators.password,
+                ),
+                const SizedBox(height: 14),
+
+                // ── Confirm Password ──────────────────────────────────
+                TextFormField(
+                  controller: _confirmController,
+                  obscureText: _obscureConfirm,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _submit(),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm password',
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 20,
+                        color: AppColors.textTertiary,
+                      ),
+                      onPressed: () => setState(
+                          () => _obscureConfirm = !_obscureConfirm),
+                    ),
+                  ),
+                  validator: Validators.confirmPassword(
+                    _passwordController.text,
+                  ),
                 ),
 
                 const SizedBox(height: 28),
 
-                // ── Sign In Button ────────────────────────────────────
+                // ── Sign Up Button ────────────────────────────────────
                 ElevatedButton(
                   onPressed: authState.isLoading ? null : _submit,
                   child: authState.isLoading
@@ -137,25 +180,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text('Sign in'),
+                      : const Text('Create account'),
                 ),
 
                 const SizedBox(height: 16),
 
-                // ── Sign Up Link ──────────────────────────────────────
+                // ── Sign In Link ──────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account? ",
+                      'Already have an account? ',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => context.go(AppRoutes.signup),
+                      onTap: () => context.go(AppRoutes.login),
                       child: Text(
-                        'Sign up',
+                        'Sign in',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w600,
@@ -164,6 +207,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           ),

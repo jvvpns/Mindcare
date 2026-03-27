@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 
-class CrisisScreen extends StatelessWidget {
-  const CrisisScreen({super.key});
+class MoodTrackingScreen extends StatelessWidget {
+  const MoodTrackingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Crisis Support', style: AppTextStyles.headingSmall),
+        title: const Text('Mood Tracker', style: AppTextStyles.headingSmall),
         backgroundColor: AppColors.surface,
         elevation: 0,
       ),
@@ -24,10 +24,10 @@ class CrisisScreen extends StatelessWidget {
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.emergency_outlined, size: 36, color: AppColors.primary),
+              child: const Icon(Icons.mood_outlined, size: 36, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            const Text('Crisis Support', style: AppTextStyles.headingMedium),
+            const Text('Mood Tracker', style: AppTextStyles.headingMedium),
             const SizedBox(height: 8),
             Text(
               'Coming in a future phase',
