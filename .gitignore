@@ -50,3 +50,4 @@ macos/
 web/
 linux/
 windows/
+.env
