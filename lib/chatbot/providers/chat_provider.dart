@@ -13,7 +13,8 @@ import 'chat_session_provider.dart';
 final geminiServiceProvider = Provider<GeminiService>((ref) => GeminiService());
 
 /// Indicates whether Kelly is currently loading her context (first session init).
-final chatInitializingProvider = StateProvider<bool>((ref) => true);
+/// Starts as false — only goes true when loading a SAVED past session from Hive.
+final chatInitializingProvider = StateProvider<bool>((ref) => false);
 
 /// Indicates whether Kelly is currently typing a reply.
 final chatLoadingProvider = StateProvider<bool>((ref) => false);
@@ -29,94 +30,112 @@ class ChatMessagesNotifier extends StateNotifier<List<ChatMessage>> {
   final _uuid = const Uuid();
 
   ChatMessagesNotifier(this._ref) : super([]) {
-    // Listen to session changes
+    // Fire immediately for the initial session (null = New Chat).
+    _initSession(sessionId: null);
+
+    // Listen only to ACTUAL session ID changes (switching to a saved session).
     _ref.listen<String?>(
       currentSessionIdProvider,
       (previous, next) {
+        // Only re-init when the session ID actually changes value
         if (previous != next) {
           _initSession(sessionId: next);
         }
       },
-      fireImmediately: true,
     );
   }
 
-  /// Option 3: Hybrid context loading.
-  /// 1. Build health data summary   → injected into system prompt.
-  /// 2. Load last 30 chat messages  → replayed as Gemini session history.
-  /// 3. Show persisted messages in UI so the user sees prior conversation.
+  /// Hybrid context init with efficiency optimizations.
+  /// - New Chat (sessionId == null): zero history sent to Gemini, fresh greeting.
+  /// - Saved Session: loads last 15 messages (not 30) for faster context replay.
   Future<void> _initSession({String? sessionId}) async {
-    // Only show loading indicator if we are loading a heavy past session.
+    _ref.read(chatLoadingProvider.notifier).state = false;
+
+    // Only show spinner when loading a heavy saved session from Hive.
     if (sessionId != null) {
       _ref.read(chatInitializingProvider.notifier).state = true;
-    } else {
-      _ref.read(chatInitializingProvider.notifier).state = false;
     }
-    _ref.read(chatLoadingProvider.notifier).state = false;
 
     try {
       final contextService = KellyContextService.instance;
       final geminiService = _ref.read(geminiServiceProvider);
 
-      // ── Part 1: System prompt context ──────────────────────────────────────
+      // ── Part 1: System prompt (always injected) ─────────────────────────────
       final contextSummary = contextService.buildUserContextSummary();
 
-      // ── Part 2: Reconstruct Gemini history from Hive ───────────────────────
-      final geminiHistory = contextService.buildChatHistory(sessionId: sessionId);
+      // ── Part 2: Gemini history — ONLY for saved sessions ────────────────────
+      // New Chat → empty history. This is the efficiency fix: no token waste.
+      final geminiHistory = sessionId != null
+          ? contextService.buildChatHistory(sessionId: sessionId, limit: 15)
+          : <Content>[];
 
-      // Start Kelly's session with full context
       geminiService.startSessionWithContext(
         userContextSummary: contextSummary,
         history: geminiHistory,
       );
 
-      // ── Part 3: Populate UI from Hive messages ─────────────────────────────
-      final hiveMessages = KellyContextService.instance.buildChatHistory(sessionId: sessionId);
-      final uiMessages = hiveMessages.map((content) {
-        final isUser = content.role == 'user';
-        // Extract text from parts safely
-        final textContent = content.parts
-            .map((p) => p is TextPart ? p.text : '')
-            .where((t) => t.isNotEmpty)
-            .join();
-        return ChatMessage(
-          id: _uuid.v4(),
-          text: textContent,
-          isUser: isUser,
-          timestamp: DateTime.now(),
+      // ── Part 3: UI messages ─────────────────────────────────────────────────
+      if (sessionId != null) {
+        // Reload the saved session's messages for display
+        final hiveMessages = contextService.buildChatHistory(
+          sessionId: sessionId,
+          limit: 15,
         );
-      }).toList();
-
-      // If no history, show Kelly's greeting
-      if (uiMessages.isEmpty) {
-        state = [
-          ChatMessage(
-            id: 'init',
-            text: "Hi there! I'm Kelly, your Nursing Student companion. I'm here if you need to vent about clinicals, stress, or just talk through your day. How are you feeling right now?",
-            isUser: false,
+        final uiMessages = hiveMessages.map((content) {
+          final isUser = content.role == 'user';
+          final textContent = content.parts
+              .map((p) => p is TextPart ? p.text : '')
+              .where((t) => t.isNotEmpty)
+              .join();
+          return ChatMessage(
+            id: _uuid.v4(),
+            text: textContent,
+            isUser: isUser,
             timestamp: DateTime.now(),
-          ),
-        ];
+          );
+        }).toList();
+        state = uiMessages.isNotEmpty ? uiMessages : [_buildGreeting()];
       } else {
-        state = uiMessages;
+        // New Chat — always start fresh with a mood-aware greeting
+        state = [_buildGreeting()];
       }
     } catch (e) {
       // Fallback: plain session with greeting
       _ref.read(geminiServiceProvider).startChat();
-      state = [
-        ChatMessage(
-          id: 'init',
-          text: "Hi there! I'm Kelly, your Nursing Student companion. I'm here if you need to vent about clinicals, stress, or just talk through your day. How are you feeling right now?",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      ];
+      state = [_buildGreeting()];
     } finally {
-      if (sessionId != null) {
-        _ref.read(chatInitializingProvider.notifier).state = false;
-      }
+      _ref.read(chatInitializingProvider.notifier).state = false;
     }
   }
+
+  /// Builds a context-aware greeting for Kelly.
+  /// If the user already logged their mood today, she acknowledges it.
+  /// Otherwise she asks how they're feeling.
+  ChatMessage _buildGreeting() {
+    String greetingText;
+    try {
+      final now = DateTime.now();
+      final todayMoods = KellyContextService.instance.getTodayMood(now);
+      if (todayMoods != null) {
+        final mood = todayMoods.toLowerCase();
+        greetingText =
+            "Hey! I see you're feeling $mood today 😊 I'm right here if you want to talk about it, vent, or just need someone to listen.";
+      } else {
+        greetingText =
+            "Hi there! I'm Kelly, your Nursing Student companion 💙 I'm here if you need to vent about clinicals, stress, or just talk through your day. How are you feeling right now?";
+      }
+    } catch (_) {
+      greetingText =
+          "Hi there! I'm Kelly, your Nursing Student companion 💙 I'm here if you need to vent about clinicals, stress, or just talk through your day. How are you feeling right now?";
+    }
+    return ChatMessage(
+      id: 'init_${DateTime.now().millisecondsSinceEpoch}',
+      text: greetingText,
+      isUser: false,
+      timestamp: DateTime.now(),
+    );
+  }
+
 
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;

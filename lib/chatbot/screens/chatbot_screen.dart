@@ -7,6 +7,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
+import '../../core/models/mood_log.dart';
+import '../../mood_tracking/providers/mood_provider.dart';
 import '../providers/kelly_state_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/chat_safety_provider.dart';
@@ -67,6 +69,8 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     final isInitializing = ref.watch(chatInitializingProvider);
     // Watch crisis safety state
     final isCrisisActive = ref.watch(isCrisisActiveProvider);
+    // Watch today's mood to drive context-aware chips
+    final todayMood = ref.watch(todayMoodProvider);
 
     // Auto-scroll when new messages arrive
     ref.listen(chatMessagesProvider, (_, __) => Future.delayed(const Duration(milliseconds: 100), _scrollToBottom));
@@ -214,7 +218,7 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
               AnimatedSize(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                child: _buildQuickReplies(currentEmotion),
+                child: _buildQuickReplies(currentEmotion, todayMood),
               ),
             
             // ── Input Area ──────────────────────────────────────────────────
@@ -230,24 +234,33 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     );
   }
 
-  Widget _buildQuickReplies(String emotion) {
+  Widget _buildQuickReplies(String emotion, MoodLog? todayMood) {
+    final bool moodLogged = todayMood != null;
     List<Widget> chips = [];
-    
-    // Determine quick replies based on Kelly's current emotion/context
+
     if (emotion == AppConstants.kellyConcerned || emotion == AppConstants.kellySad) {
+      // Feeling bad: offer breathing, or crying-it-out with Kelly
       chips = [
-        _buildChip("Try Breathing", PhosphorIconsRegular.wind),
-        _buildChip("I'm overwhelmed", PhosphorIconsRegular.warningCircle),
+        _buildChip("Try Breathing", PhosphorIconsRegular.wind, openRoute: AppRoutes.breathing),
+        _buildChip("I'm overwhelmed", PhosphorIconsRegular.warningCircle, openRoute: AppRoutes.crisis),
       ];
     } else if (emotion == AppConstants.kellyHappy || emotion == AppConstants.kellyExcited) {
+      // Feeling good: mood logging if not done, else show progress
       chips = [
-        _buildChip("Log my mood", PhosphorIconsRegular.smiley),
+        if (!moodLogged)
+          _buildChip("Log my mood 😄", PhosphorIconsRegular.smiley, openRoute: AppRoutes.moodTracking)
+        else
+          _buildChip("View my Progress", PhosphorIconsRegular.trendUp, openRoute: AppRoutes.progress),
         _buildChip("Thanks, Kelly!", PhosphorIconsRegular.heart),
       ];
     } else {
+      // Default / neutral: context-aware shortcuts
       chips = [
         _buildChip("I feel stressed", PhosphorIconsRegular.cloudRain),
-        _buildChip("Tell me a joke", PhosphorIconsRegular.sparkle),
+        if (!moodLogged)
+          _buildChip("Log my mood", PhosphorIconsRegular.smiley, openRoute: AppRoutes.moodTracking)
+        else
+          _buildChip("Tell me a joke", PhosphorIconsRegular.smileyWink),
       ];
     }
 
@@ -266,7 +279,7 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     );
   }
 
-  Widget _buildChip(String label, IconData icon) {
+  Widget _buildChip(String label, IconData icon, {String? openRoute}) {
     return ActionChip(
       avatar: PhosphorIcon(icon, size: 16, color: AppColors.primary),
       label: Text(label, style: AppTextStyles.labelMedium),
@@ -274,20 +287,11 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
       side: const BorderSide(color: AppColors.borderLight),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       onPressed: () {
-        // Intercept specific quick replies to open features directly
-        if (label == 'Try Breathing' || label == 'I feel stressed') {
-          context.push(AppRoutes.breathing);
-        } else if (label == "I'm overwhelmed") {
-          context.push(AppRoutes.crisis);
-        } else if (label == 'Log my mood') {
-          context.push(AppRoutes.moodTracking);
-        } else if (label == 'Take Assessment') {
-          context.push(AppRoutes.burnoutAssessment);
-        } else if (label == 'View Progress') {
-          context.push(AppRoutes.progress);
-        } else if (label == 'Add Journal') {
-          context.push(AppRoutes.journal);
+        if (openRoute != null) {
+          // Navigate directly to the target feature screen
+          context.push(openRoute);
         } else {
+          // Send the chip label as a message to Kelly
           _messageController.text = label;
           _sendMessage();
         }

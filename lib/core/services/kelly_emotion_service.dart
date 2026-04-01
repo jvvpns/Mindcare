@@ -96,4 +96,19 @@ class KellyEmotionService {
       default:          return 'triggerIdle';
     }
   }
+
+  // ── Mood Index → Kelly emotion ─────────────────────────────────────────────
+  /// Maps today's Dashboard mood index (0–3) to a Kelly emotion string.
+  /// 0 = Happy 😄  → kellyHappy
+  /// 1 = Angry 😡  → kellyConcerned
+  /// 2 = Sleepy 😴 → kellySad
+  /// 3 = Bored 😒  → kellyDefault
+  static String fromMoodIndex(int index) {
+    switch (index) {
+      case 0:  return AppConstants.kellyHappy;
+      case 1:  return AppConstants.kellyConcerned;
+      case 2:  return AppConstants.kellySad;
+      default: return AppConstants.kellyDefault;
+    }
+  }
 }

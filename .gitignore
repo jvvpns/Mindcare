@@ -52,10 +52,10 @@ windows/
 .env
 
 # ── API Keys & Secrets (NEVER commit these) ───────────────────────────────
-lib/core/constants/app_constants.dart
 .env
 .env.*
 secrets.dart
 **/secrets/
 google-services.json
 GoogleService-Info.plist
+HILWAY_CONTEXT_AND_ROADMAP.md

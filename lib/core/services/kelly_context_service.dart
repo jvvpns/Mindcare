@@ -11,7 +11,8 @@ class KellyContextService {
   KellyContextService._();
   static final KellyContextService instance = KellyContextService._();
 
-  static const int _maxHistoryMessages = 30;
+  // Reduced from 30→15 for faster token processing and better efficiency at scale
+  static const int _maxHistoryMessages = 15;
 
   // ── 1. User Context Summary (System Prompt Part) ─────────────────────────
   String buildUserContextSummary() {
@@ -51,6 +52,23 @@ class KellyContextService {
       }
     } catch (_) {
       buffer.writeln('Burnout Assessment: (unavailable)');
+    }
+
+    // Today's mood check — so Kelly won't ask again if already logged
+    try {
+      final now = DateTime.now();
+      final todayMoods = HiveService.moodBox.values.where((m) =>
+          m.loggedAt.year == now.year &&
+          m.loggedAt.month == now.month &&
+          m.loggedAt.day == now.day);
+      if (todayMoods.isNotEmpty) {
+        final todayLabel = todayMoods.first.moodLabel;
+        buffer.writeln('Today\'s mood: Already checked in. Feeling "$todayLabel" today. Do NOT ask the user how they are feeling today — they\'ve already told you.');
+      } else {
+        buffer.writeln('Today\'s mood: Not yet logged. You may gently ask how they are feeling today if relevant.');
+      }
+    } catch (_) {
+      // non-fatal
     }
 
     buffer.writeln('=== End Context ===');
@@ -105,5 +123,24 @@ class KellyContextService {
     } catch (_) {
       // Non-fatal — don't crash the chat if persistence fails
     }
+  }
+
+  // ── 4. Convenience: Today's Mood Label ───────────────────────────────────
+  /// Returns the mood label string if the user has logged their mood today,
+  /// or null if they haven't. Used by the chat provider to build Kelly's
+  /// context-aware greeting so she doesn't repeat "How are you feeling?".
+  String? getTodayMood(DateTime now) {
+    try {
+      final todayMoods = HiveService.moodBox.values.where((m) =>
+          m.loggedAt.year == now.year &&
+          m.loggedAt.month == now.month &&
+          m.loggedAt.day == now.day);
+      if (todayMoods.isNotEmpty) {
+        return todayMoods.first.moodLabel;
+      }
+    } catch (_) {
+      // non-fatal
+    }
+    return null;
   }
 }

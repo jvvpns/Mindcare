@@ -7,11 +7,13 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/kelly_emotion_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../shared/widgets/hilway_card.dart';
 import '../../mood_tracking/providers/mood_provider.dart';
 import '../../mood_tracking/widgets/mood_bottom_sheet.dart';
 import '../../progress/providers/progress_provider.dart';
+import '../../chatbot/providers/chat_session_provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -32,7 +34,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _buildHeader(userName),
+                  _buildHeader(context, userName),
                   const SizedBox(height: 32),
                   
                   // Swipeable Highlight Carousel
@@ -53,7 +55,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(String name) {
+  Widget _buildHeader(BuildContext context, String name) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,11 +79,28 @@ class DashboardScreen extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Text(
-                "Take a deep breath, you've got this.",
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textTertiary),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              GestureDetector(
+                onTap: () => context.push(AppRoutes.breathing),
+                child: Row(
+                  children: [
+                    Text(
+                      "Take a deep breath, you've got this.",
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppColors.primary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(width: 4),
+                    const PhosphorIcon(
+                      PhosphorIconsRegular.wind,
+                      color: AppColors.primary,
+                      size: 13,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -293,14 +312,14 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class DashboardCarousel extends StatefulWidget {
+class DashboardCarousel extends ConsumerStatefulWidget {
   const DashboardCarousel({super.key});
 
   @override
-  State<DashboardCarousel> createState() => _DashboardCarouselState();
+  ConsumerState<DashboardCarousel> createState() => _DashboardCarouselState();
 }
 
-class _DashboardCarouselState extends State<DashboardCarousel> {
+class _DashboardCarouselState extends ConsumerState<DashboardCarousel> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -312,6 +331,24 @@ class _DashboardCarouselState extends State<DashboardCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Dynamic Kelly card data ──────────────────────────────────────────────
+    final todayMood = ref.watch(todayMoodProvider);
+    final sessions  = ref.watch(chatSessionsProvider);
+
+    // Map today's mood index to Kelly's emotion asset
+    final kellyEmotion = todayMood != null
+        ? KellyEmotionService.fromMoodIndex(todayMood.moodIndex)
+        : AppConstants.kellyDefault;
+    final kellyIcon = _kellyEmotionToIcon(kellyEmotion);
+
+    // Subtitle: last session title if available, fallback to generic
+    final lastSession = sessions.isNotEmpty ? sessions.first : null;
+    final kellySubtitle = lastSession != null && lastSession.title != 'New Conversation'
+        ? 'Continuing: ${lastSession.title}'
+        : "It looks like you had a long shift. Want to debrief?";
+
+    const totalCards = 4;
+
     return Column(
       children: [
         SizedBox(
@@ -320,27 +357,44 @@ class _DashboardCarouselState extends State<DashboardCarousel> {
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentPage = index),
             physics: const BouncingScrollPhysics(),
-            children: const [
+            children: [
+              // 1. Dynamic Kelly card
               _CarouselCard(
-                key: ValueKey('carousel_kelly'),
-                title: "Kelly is here",
-                subtitle: "It looks like you had a long shift. Want to debrief?",
-                iconData: PhosphorIconsRegular.firstAid,
+                key: const ValueKey('carousel_kelly'),
+                title: todayMood != null
+                    ? "Kelly feels you're ${todayMood.moodLabel.toLowerCase()}"
+                    : "Kelly is here",
+                subtitle: kellySubtitle,
+                iconData: kellyIcon,
                 route: AppRoutes.chatbot,
+                accentColor: AppColors.accent,
               ),
-              _CarouselCard(
+              // 2. Mindful Breathing — calm blue
+              const _CarouselCard(
+                key: ValueKey('carousel_breathing'),
+                title: "Mindful Breathing",
+                subtitle: "A 4-4-4 rhythm to help you center yourself.",
+                iconData: PhosphorIconsRegular.wind,
+                route: AppRoutes.breathing,
+                accentColor: AppColors.primary,
+              ),
+              // 3. Burnout Check
+              const _CarouselCard(
                 key: ValueKey('carousel_burnout'),
                 title: "Burnout Check",
                 subtitle: "Take 2 minutes to assess your current stress levels.",
                 iconData: PhosphorIconsRegular.clipboardText,
                 route: '/burnout-assessment',
+                accentColor: AppColors.moodStressed,
               ),
-              _CarouselCard(
+              // 4. Journal
+              const _CarouselCard(
                 key: ValueKey('carousel_journal'),
                 title: "Daily Reflection",
                 subtitle: "Write down one good thing that happened today.",
                 iconData: PhosphorIconsRegular.bookOpenText,
                 route: AppRoutes.journal,
+                accentColor: AppColors.secondary,
               ),
             ],
           ),
@@ -348,7 +402,7 @@ class _DashboardCarouselState extends State<DashboardCarousel> {
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(3, (index) {
+          children: List.generate(totalCards, (index) {
             final active = _currentPage == index;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
@@ -366,6 +420,17 @@ class _DashboardCarouselState extends State<DashboardCarousel> {
       ],
     );
   }
+
+  /// Maps Kelly's emotion string back to an appropriate Phosphor icon
+  /// for the Home Screen card (we don't use image assets here).
+  IconData _kellyEmotionToIcon(String emotion) {
+    switch (emotion) {
+      case AppConstants.kellyHappy:     return PhosphorIconsRegular.smiley;
+      case AppConstants.kellyConcerned: return PhosphorIconsRegular.warningCircle;
+      case AppConstants.kellySad:       return PhosphorIconsRegular.smileySad;
+      default:                          return PhosphorIconsRegular.firstAid;
+    }
+  }
 }
 
 class _CarouselCard extends StatelessWidget {
@@ -373,6 +438,7 @@ class _CarouselCard extends StatelessWidget {
   final String subtitle;
   final IconData iconData;
   final String route;
+  final Color accentColor;
 
   const _CarouselCard({
     super.key,
@@ -380,36 +446,24 @@ class _CarouselCard extends StatelessWidget {
     required this.subtitle,
     required this.iconData,
     required this.route,
+    this.accentColor = AppColors.accent,
   });
 
   @override
   Widget build(BuildContext context) {
     return HilwayCard(
       color: AppColors.surface,
-      margin: const EdgeInsets.symmetric(horizontal: 4), // Small margin to prevent clipping shadow
-      onTap: () {
-        if (route == AppRoutes.journal) {
-          // Journal route may not exist yet, just a toast or basic nav
-          try {
-            context.push(route);
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Journal module coming soon!')),
-            );
-          }
-        } else {
-          context.push(route);
-        }
-      },
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      onTap: () => context.push(route),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.accent.withValues(alpha: 0.15),
+              color: accentColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: PhosphorIcon(iconData, color: AppColors.accent, size: 32),
+            child: PhosphorIcon(iconData, color: accentColor, size: 32),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -420,6 +474,8 @@ class _CarouselCard extends StatelessWidget {
                 Text(
                   title,
                   style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -430,6 +486,11 @@ class _CarouselCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          PhosphorIcon(
+            PhosphorIconsRegular.caretRight,
+            color: accentColor.withValues(alpha: 0.5),
+            size: 16,
           ),
         ],
       ),
