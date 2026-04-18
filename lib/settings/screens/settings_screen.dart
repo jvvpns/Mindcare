@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,9 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../core/providers/debug_provider.dart';
+import '../../core/providers/health_provider.dart';
+import '../../shared/widgets/hilway_background.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,15 +16,18 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
+    final isDebugMode = ref.watch(debugModeProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Settings', style: AppTextStyles.headingSmall),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: HilwayBackground(
+        child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           physics: const BouncingScrollPhysics(),
@@ -62,6 +69,24 @@ class SettingsScreen extends ConsumerWidget {
               const Text('Preferences', style: AppTextStyles.labelLarge),
               const SizedBox(height: 12),
               _buildSettingsTile(
+                icon: Platform.isIOS ? PhosphorIconsRegular.heartbeat : PhosphorIconsRegular.pulse,
+                title: Platform.isIOS ? 'Sync Apple Health' : 'Sync Health Connect',
+                subtitle: 'Connect sleep & mindfulness data',
+                onTap: () async {
+                  final authorized = await ref.read(sleepDurationProvider.notifier).authorizeAndFetch();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(authorized ? 'Health Data Synced!' : 'Sync failed or denied.'),
+                        backgroundColor: authorized ? AppColors.success : AppColors.error,
+                      ),
+                    );
+                  }
+                },
+                trailing: const Icon(PhosphorIconsRegular.caretRight, color: AppColors.textTertiary),
+              ),
+              const SizedBox(height: 12),
+              _buildSettingsTile(
                 icon: PhosphorIconsRegular.bell,
                 title: 'Notifications',
                 subtitle: 'Reminders for duty & reflection',
@@ -79,6 +104,18 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: 'System Default',
                 onTap: () {},
                 trailing: const Icon(PhosphorIconsRegular.caretRight, color: AppColors.textTertiary),
+              ),
+              const SizedBox(height: 12),
+              _buildSettingsTile(
+                icon: PhosphorIconsRegular.bug,
+                title: 'Debug Mode',
+                subtitle: 'Developer diagnostic tools',
+                onTap: () => ref.read(debugModeProvider.notifier).state = !isDebugMode,
+                trailing: Switch(
+                  value: isDebugMode,
+                  onChanged: (val) => ref.read(debugModeProvider.notifier).state = val,
+                  activeThumbColor: AppColors.primary,
+                ),
               ),
 
               const SizedBox(height: 32),
@@ -122,14 +159,58 @@ class SettingsScreen extends ConsumerWidget {
               
               const SizedBox(height: 40),
               Center(
-                child: Text(
-                  'HILWAY v1.0.0\nMade with 💙 for Filipino Nurses',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.caption.copyWith(color: AppColors.textTertiary),
+                child: Column(
+                  children: [
+                    Text(
+                      'HILWAY v1.0.0',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.textTertiary.withValues(alpha: 0.5),
+                        letterSpacing: 2.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Made with',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textTertiary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Icon(
+                          PhosphorIconsFill.heart,
+                          color: AppColors.error,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'for student nurses in',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textTertiary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Roxas City, Capiz',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+        ),
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/supabase_service.dart';
@@ -43,13 +44,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = AuthState(user: currentUser);
 
     // Listen for auth state changes (login, logout, token refresh)
-    SupabaseService.client.auth.onAuthStateChange.listen((event) {
-      state = state.copyWith(
-        user: event.session?.user,
-        clearUser: event.session == null,
-        isLoading: false,
-        clearError: true,
-      );
+    SupabaseService.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      final session = data.session;
+
+      // Only clear error and update state if it's a meaningful change
+      if (event == AuthChangeEvent.signedIn || event == AuthChangeEvent.signedOut) {
+        state = state.copyWith(
+          user: session?.user,
+          clearUser: session == null,
+          isLoading: false,
+          clearError: event == AuthChangeEvent.signedIn, // Clear error on success
+        );
+      } else {
+        // Just update user for refresh
+        state = state.copyWith(
+          user: session?.user,
+          clearUser: session == null,
+          isLoading: false,
+        );
+      }
     });
   }
 
@@ -125,12 +139,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return false;
     } on AuthException catch (e) {
+      final friendlyError = _friendlyAuthError(e.message);
+      debugPrint('AuthNotifier: SignIn failed -> $friendlyError');
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _friendlyAuthError(e.message),
+        errorMessage: friendlyError,
       );
       return false;
     } catch (e) {
+      debugPrint('AuthNotifier: SignIn error -> $e');
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Something went wrong. Please check your connection.',

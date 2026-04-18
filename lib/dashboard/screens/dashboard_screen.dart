@@ -6,15 +6,24 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/router/app_router.dart';
-import '../../core/services/kelly_emotion_service.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../core/router/app_router.dart';
 import '../../shared/widgets/hilway_card.dart';
 import '../../mood_tracking/providers/mood_provider.dart';
 import '../../mood_tracking/widgets/mood_bottom_sheet.dart';
-import '../../progress/providers/progress_provider.dart';
-import '../../chatbot/providers/chat_session_provider.dart';
-import 'package:fl_chart/fl_chart.dart';
+import '../../journal/providers/journal_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../widgets/wellness_gauge.dart';
+import '../providers/pulse_provider.dart';
+import '../providers/streak_provider.dart';
+import '../../shared/widgets/hilway_background.dart';
+import '../../planner/providers/planner_provider.dart';
+import '../../chatbot/widgets/kelly_orb_mascot.dart';
+import '../../chatbot/providers/kelly_state_provider.dart';
+import '../providers/dashboard_interaction_provider.dart';
+import '../../core/models/mood_log.dart';
+import '../../core/providers/health_provider.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -23,10 +32,13 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final userName = user?.email?.split('@').first ?? 'Guiding Star';
+    final dailyQuote = ref.watch(dailyQuoteProvider);
+    final kellyEmotion = ref.watch(kellyEmotionProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: HilwayBackground(
+        child: SafeArea(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -34,17 +46,18 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _buildHeader(context, userName),
+                  _buildHeader(context, userName, dailyQuote, ref, kellyEmotion),
                   const SizedBox(height: 32),
                   
-                  // Swipeable Highlight Carousel
-                  const DashboardCarousel(),
+                  _buildMoodCheckerRow(context, ref),
                   const SizedBox(height: 24),
 
-                  _buildMoodCheckerRow(context, ref),
-                  const SizedBox(height: 32),
+                  _buildHeroJournalCard(context, ref),
+                  const SizedBox(height: 24),
+                  
+                  _buildNextTaskCard(context, ref),
 
-                  _buildDashboardGrid(context, ref),
+                  _buildToolGrid(context, ref),
                   const SizedBox(height: 48), // Bottom padding
                 ]),
               ),
@@ -52,77 +65,214 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, String name) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  // ── Greeting helper ────────────────────────────────────────────────────
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
+  String _getMoodAnalysis(MoodLog? log, String fallbackQuote, double sleepHours) {
+    // ── Priority 1: Low Sleep Insight ──────────────────────────────────────
+    if (sleepHours > 0 && sleepHours < 6) {
+      return "I see you only had ${sleepHours.toStringAsFixed(1)} hours of sleep. Please take it easy today, and remember to rest when you can.";
+    }
+
+    // ── Priority 2: Deep Mood & Note Analysis ──────────────────────────────
+    if (log == null) return fallbackQuote;
+    
+    final mood = log.moodLabel.toLowerCase();
+    final note = log.note?.toLowerCase() ?? '';
+
+    // Smart Keyword Analysis (Offline Intelligence)
+    if (note.contains('exam') || note.contains('quiz') || note.contains('study')) {
+      return "I see you're focusing on your studies. Don't let the exam stress get to you—you're doing great!";
+    }
+    if (note.contains('duty') || note.contains('hospital') || note.contains('patient')) {
+      return "Hospital duties can be draining. Your compassion is making a real difference today.";
+    }
+    if (note.contains('tired') || note.contains('sleepy') || note.contains('exhausted')) {
+      return "You seem really exhausted. Please prioritize some rest after your shift!";
+    }
+
+    // Fallback to General Mood Analysis
+    switch (mood) {
+      case 'calm':
+        return "You're feeling calm today. It's a great time to focus on your studies.";
+      case 'happy':
+        return "I love seeing you happy! Keep that positive energy going throughout your shift.";
+      case 'energetic':
+        return "You've got a lot of energy today! Maybe tackle those complex clinical charts now?";
+      case 'anxious':
+        return "Feeling a bit anxious? Remember to take slow breaths. You've got this.";
+      case 'sad':
+        return "It's okay to feel sad. Take things one step at a time today. I'm here if you want to chat.";
+      case 'depressed':
+        return "You seem really down. Please be gentle with yourself today. I'm always here for you.";
+      default:
+        return fallbackQuote;
+    }
+  }
+
+  Widget _buildHeader(BuildContext context, String name, String quote, WidgetRef ref, String kellyEmotion) {
+    final todayMood = ref.watch(todayMoodProvider);
+    final sleepHours = ref.watch(sleepDurationProvider);
+    final pokedMessage = ref.watch(kellyPokedMessageProvider);
+    
+    // pokedMessage takes priority if it's active
+    final message = pokedMessage ?? _getMoodAnalysis(todayMood, quote, sleepHours);
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _greeting(),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _capitalize(name),
+                    style: AppTextStyles.displayMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Row(
+              children: [
+                // ── Gamification: Daily Streak ──────────────────────────────
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const PhosphorIcon(PhosphorIconsFill.plant, color: AppColors.success, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${ref.watch(streakProvider)}',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // ── Notification Bell ───────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const PhosphorIcon(
+                    PhosphorIconsRegular.bell,
+                    color: AppColors.textPrimary,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        // ── Speaking Mascot Component ──────────────────────────────────────
+        GestureDetector(
+          onTap: () => ref.read(kellyPokedMessageProvider.notifier).poke(),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Good morning,',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+              // Kelly Mini Orb (The Avatar)
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Center(
+                  child: KellyMiniOrb(emotion: kellyEmotion, size: 48),
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${_capitalize(name)} 👋',
-                style: AppTextStyles.displayMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => context.push(AppRoutes.breathing),
-                child: Row(
-                  children: [
-                    Text(
-                      "Take a deep breath, you've got this.",
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.primary,
-                        decoration: TextDecoration.underline,
-                        decorationColor: AppColors.primary,
+              const SizedBox(width: 12),
+              // Speech Bubble
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ],
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.08),
                     ),
-                    const SizedBox(width: 4),
-                    const PhosphorIcon(
-                      PhosphorIconsRegular.wind,
-                      color: AppColors.primary,
-                      size: 13,
-                    ),
-                  ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            "Kelly",
+                            style: AppTextStyles.labelMedium.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.auto_awesome, size: 12, color: AppColors.primary.withValues(alpha: 0.5)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textPrimary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(top: 8), // Align slightly with the name line
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const PhosphorIcon(
-            PhosphorIconsRegular.bell,
-            color: AppColors.textPrimary,
-            size: 24,
           ),
         ),
       ],
@@ -141,160 +291,257 @@ class DashboardScreen extends ConsumerWidget {
             style: AppTextStyles.headingSmall,
           ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(AppConstants.moodEmojis.length, (index) {
-              final isSelected = todayLog != null && todayLog.moodIndex == index;
-              
-              return GestureDetector(
-                onTap: () {
-                  if (todayLog == null) {
-                    MoodBottomSheet.show(context, index);
-                  }
-                },
-                child: Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surfaceSecondary,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primary.withValues(alpha: 0.5) : Colors.transparent,
-                          width: 2,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: List.generate(AppConstants.moodEmojis.length, (index) {
+                final isSelected = todayLog != null && todayLog.moodIndex == index;
+                
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (todayLog == null) {
+                        MoodBottomSheet.show(context, index);
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.surfaceSecondary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary.withValues(alpha: 0.5) : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Image.asset(
+                              AppConstants.moodAnimatedAssets[index],
+                              width: 36,
+                              height: 36,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          AppConstants.moodEmojis[index],
-                          style: const TextStyle(fontSize: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppConstants.moodLabels[index],
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      AppConstants.moodLabels[index],
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                  ),
+                );
+              }),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDashboardGrid(BuildContext context, WidgetRef ref) {
-    final weeklyProgress = ref.watch(weeklyProgressProvider);
-    
-    // Map data to chart spots. If no rating is found, fallback to 3 (neutral) or connect dots?
-    // Let's fallback to previous day's rating or a baseline of 1 to keep the line continuous.
-    int lastVal = 1;
-    final spots = List.generate(7, (i) {
-      if (weeklyProgress.length > i) {
-        final val = weeklyProgress[i].stressRating;
-        if (val != null) {
-          lastVal = val;
-          return FlSpot(i.toDouble(), val.toDouble());
-        }
-      }
-      return FlSpot(i.toDouble(), lastVal.toDouble());
-    });
+  Widget _buildHeroJournalCard(BuildContext context, WidgetRef ref) {
+    final journals = ref.watch(journalProvider);
+    final hasLogs = journals.isNotEmpty;
+    final snippet = hasLogs ? journals.first.content : "Write down one good thing that happened today.";
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Your Activity", style: AppTextStyles.headingMedium),
-        const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left column: Tasks
-            Expanded(
-              flex: 5,
-              child: HilwayCard(
-                color: AppColors.secondary.withValues(alpha: 0.1),
-                padding: const EdgeInsets.all(16),
-                onTap: () => context.go(AppRoutes.planner),
+    return HilwayCard(
+      color: AppColors.secondary.withValues(alpha: 0.12),
+      onTap: () => context.push(AppRoutes.journal),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const PhosphorIcon(PhosphorIconsRegular.bookOpenText, color: AppColors.secondary, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Text("Daily Reflection", style: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary)),
+                ],
+              ),
+              PhosphorIcon(PhosphorIconsRegular.caretRight, color: AppColors.secondary.withValues(alpha: 0.6), size: 20),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            snippet,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: hasLogs ? AppColors.textPrimary : AppColors.textSecondary,
+              fontStyle: hasLogs ? FontStyle.normal : FontStyle.italic,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextTaskCard(BuildContext context, WidgetRef ref) {
+    final tasks = ref.watch(plannerProvider);
+    final now = DateTime.now();
+    final next24Hours = now.add(const Duration(hours: 24));
+    
+    // Find first pending task that is due after 'now' but before 'now + 24h'
+    final upcomingTasks = tasks.where((t) => 
+      !t.isCompleted && 
+      t.dueDate.isAfter(now) && 
+      t.dueDate.isBefore(next24Hours)
+    ).toList();
+    
+    if (upcomingTasks.isEmpty) return const SizedBox.shrink(); // Hidden if empty
+    
+    final nextTask = upcomingTasks.first;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32), // Spacer below
+      child: GestureDetector(
+        onTap: () => context.push(AppRoutes.planner),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const PhosphorIcon(PhosphorIconsRegular.clockUser, color: AppColors.primary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(PhosphorIconsRegular.checkCircle, color: AppColors.secondary, size: 20),
-                        const SizedBox(width: 8),
-                        Text("Next Duty", style: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary)),
-                      ],
+                    Text(
+                      'Next Task • ${DateFormat('h:mm a').format(nextTask.dueDate)}',
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 12),
-                    Text("Return Demo", style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
-                    Text("Foley Catheter", style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text("Today, 8:00 AM", style: AppTextStyles.caption.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(
+                      nextTask.title,
+                      style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              PhosphorIcon(PhosphorIconsRegular.caretRight, color: AppColors.textTertiary, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolGrid(BuildContext context, WidgetRef ref) {
+    final pulse = ref.watch(wellnessPulseProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Wellness Tools", style: AppTextStyles.headingMedium),
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: HilwayCard(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                color: AppColors.surface,
+                onTap: () => context.push('/burnout-assessment'),
+                child: WellnessGauge(
+                  score: pulse.resilienceScore,
+                  level: pulse.level,
+                  label: pulse.label,
+                ),
+              ),
             ),
             const SizedBox(width: 16),
-            // Right column: Stress Graph
             Expanded(
-              flex: 6,
-              child: HilwayCard(
-                color: AppColors.accent.withValues(alpha: 0.1),
-                padding: const EdgeInsets.all(16),
-                onTap: () => context.go(AppRoutes.progress),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(PhosphorIconsRegular.trendUp, color: AppColors.accent, size: 20),
-                        const SizedBox(width: 8),
-                        Text("Stress Trend", style: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary)),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 70,
-                      child: LineChart(
-                        LineChartData(
-                          gridData: const FlGridData(show: false),
-                          titlesData: const FlTitlesData(show: false),
-                          borderData: FlBorderData(show: false),
-                          minX: 0, maxX: 6, minY: 0, maxY: 5,
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: spots,
-                              isCurved: true,
-                              color: AppColors.accent,
-                              barWidth: 3,
-                              isStrokeCapRound: true,
-                              dotData: const FlDotData(show: false),
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: AppColors.accent.withValues(alpha: 0.2),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+              child: Column(
+                children: [
+                  _ToolCard(
+                    title: "Breathing",
+                    subtitle: "Relax & center",
+                    iconData: PhosphorIconsRegular.wind,
+                    color: AppColors.primary,
+                    route: AppRoutes.breathing,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 16),
+                  _ToolCard(
+                    title: "Planner",
+                    subtitle: "Next duty",
+                    iconData: PhosphorIconsRegular.calendarCheck,
+                    color: AppColors.accent,
+                    route: AppRoutes.planner,
+                    compact: true,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Hero(
+                tag: 'kelly_chat_fab',
+                child: Material(
+                  color: Colors.transparent,
+                  child: _ToolCard(
+                    title: "Talk to Kelly",
+                    subtitle: "Your AI companion",
+                    iconData: PhosphorIconsRegular.chatTeardropDots,
+                    color: AppColors.secondary,
+                    route: AppRoutes.chatbot,
+                  ),
                 ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _ToolCard(
+                title: "Crisis Support",
+                subtitle: "Get help instantly",
+                iconData: PhosphorIconsRegular.phoneCall,
+                color: AppColors.crisis,
+                route: '/crisis',
               ),
             ),
           ],
@@ -312,188 +559,136 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class DashboardCarousel extends ConsumerStatefulWidget {
-  const DashboardCarousel({super.key});
-
-  @override
-  ConsumerState<DashboardCarousel> createState() => _DashboardCarouselState();
-}
-
-class _DashboardCarouselState extends ConsumerState<DashboardCarousel> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // ── Dynamic Kelly card data ──────────────────────────────────────────────
-    final todayMood = ref.watch(todayMoodProvider);
-    final sessions  = ref.watch(chatSessionsProvider);
-
-    // Map today's mood index to Kelly's emotion asset
-    final kellyEmotion = todayMood != null
-        ? KellyEmotionService.fromMoodIndex(todayMood.moodIndex)
-        : AppConstants.kellyDefault;
-    final kellyIcon = _kellyEmotionToIcon(kellyEmotion);
-
-    // Subtitle: last session title if available, fallback to generic
-    final lastSession = sessions.isNotEmpty ? sessions.first : null;
-    final kellySubtitle = lastSession != null && lastSession.title != 'New Conversation'
-        ? 'Continuing: ${lastSession.title}'
-        : "It looks like you had a long shift. Want to debrief?";
-
-    const totalCards = 4;
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 112,
-          child: PageView(
-            controller: _pageController,
-            onPageChanged: (index) => setState(() => _currentPage = index),
-            physics: const BouncingScrollPhysics(),
-            children: [
-              // 1. Dynamic Kelly card
-              _CarouselCard(
-                key: const ValueKey('carousel_kelly'),
-                title: todayMood != null
-                    ? "Kelly feels you're ${todayMood.moodLabel.toLowerCase()}"
-                    : "Kelly is here",
-                subtitle: kellySubtitle,
-                iconData: kellyIcon,
-                route: AppRoutes.chatbot,
-                accentColor: AppColors.accent,
-              ),
-              // 2. Mindful Breathing — calm blue
-              const _CarouselCard(
-                key: ValueKey('carousel_breathing'),
-                title: "Mindful Breathing",
-                subtitle: "A 4-4-4 rhythm to help you center yourself.",
-                iconData: PhosphorIconsRegular.wind,
-                route: AppRoutes.breathing,
-                accentColor: AppColors.primary,
-              ),
-              // 3. Burnout Check
-              const _CarouselCard(
-                key: ValueKey('carousel_burnout'),
-                title: "Burnout Check",
-                subtitle: "Take 2 minutes to assess your current stress levels.",
-                iconData: PhosphorIconsRegular.clipboardText,
-                route: '/burnout-assessment',
-                accentColor: AppColors.moodStressed,
-              ),
-              // 4. Journal
-              const _CarouselCard(
-                key: ValueKey('carousel_journal'),
-                title: "Daily Reflection",
-                subtitle: "Write down one good thing that happened today.",
-                iconData: PhosphorIconsRegular.bookOpenText,
-                route: AppRoutes.journal,
-                accentColor: AppColors.secondary,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(totalCards, (index) {
-            final active = _currentPage == index;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 6,
-              width: active ? 24 : 6,
-              decoration: BoxDecoration(
-                color: active ? AppColors.primary : AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  /// Maps Kelly's emotion string back to an appropriate Phosphor icon
-  /// for the Home Screen card (we don't use image assets here).
-  IconData _kellyEmotionToIcon(String emotion) {
-    switch (emotion) {
-      case AppConstants.kellyHappy:     return PhosphorIconsRegular.smiley;
-      case AppConstants.kellyConcerned: return PhosphorIconsRegular.warningCircle;
-      case AppConstants.kellySad:       return PhosphorIconsRegular.smileySad;
-      default:                          return PhosphorIconsRegular.firstAid;
-    }
-  }
-}
-
-class _CarouselCard extends StatelessWidget {
+class _ToolCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData iconData;
+  final Color color;
   final String route;
-  final Color accentColor;
+  final bool compact;
 
-  const _CarouselCard({
-    super.key,
+  const _ToolCard({
     required this.title,
     required this.subtitle,
     required this.iconData,
+    required this.color,
     required this.route,
-    this.accentColor = AppColors.accent,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return HilwayCard(
+      padding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: compact ? 12 : 20,
+      ),
       color: AppColors.surface,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
       onTap: () => context.push(route),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.15),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: PhosphorIcon(iconData, color: accentColor, size: 32),
+            child: PhosphorIcon(iconData, color: color, size: compact ? 22 : 28),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   title,
-                  style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: compact ? 14 : 16,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                if (!compact) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
-          PhosphorIcon(
-            PhosphorIconsRegular.caretRight,
-            color: accentColor.withValues(alpha: 0.5),
-            size: 16,
-          ),
+          if (compact)
+            PhosphorIcon(
+              PhosphorIconsRegular.caretRight,
+              color: AppColors.textTertiary,
+              size: 16,
+            ),
         ],
       ),
+    );
+  }
+}
+
+// ── Floating Emoji Animation ──────────────────────────────────────────────
+class FloatingEmoji extends StatefulWidget {
+  final String emoji;
+  final bool isSelected;
+  const FloatingEmoji({super.key, required this.emoji, this.isSelected = false});
+
+  @override
+  State<FloatingEmoji> createState() => _FloatingEmojiState();
+}
+
+class _FloatingEmojiState extends State<FloatingEmoji> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _yOffset;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _yOffset = Tween<double>(begin: 0, end: -4.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+    
+    _scale = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // If selected, pulse slightly more or rotate
+        double finalY = _yOffset.value;
+        double finalScale = widget.isSelected ? (_scale.value + 0.05) : _scale.value;
+        
+        return Transform.translate(
+          offset: Offset(0, finalY),
+          child: Transform.scale(
+            scale: finalScale,
+            child: Text(
+              widget.emoji,
+              style: const TextStyle(fontSize: 26),
+            ),
+          ),
+        );
+      },
     );
   }
 }

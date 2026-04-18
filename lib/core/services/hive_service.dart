@@ -8,6 +8,7 @@ import 'package:hilway/core/models/chat_session.dart';
 import 'package:hilway/core/models/planner_entry.dart';
 import 'package:hilway/core/models/assessment_result.dart';
 import 'package:hilway/core/models/journal_entry.dart';
+import 'package:hilway/clinical_duty/models/shift_task.dart';
 
 class HiveService {
   HiveService._();
@@ -28,6 +29,7 @@ class HiveService {
     Hive.registerAdapter(PlannerEntryAdapter());
     Hive.registerAdapter(AssessmentResultAdapter());
     Hive.registerAdapter(JournalEntryAdapter());
+    Hive.registerAdapter(ShiftTaskAdapter());
 
     final encryptionKey = await _getOrCreateEncryptionKey();
     await _openBoxes(encryptionKey);
@@ -74,6 +76,7 @@ class HiveService {
     await Hive.openBox<StressRating>(AppConstants.boxStressRatings);
     await Hive.openBox<PlannerEntry>(AppConstants.boxPlannerEntries);
     await Hive.openBox<AssessmentResult>(AppConstants.boxAssessments);
+    await Hive.openBox<ShiftTask>(AppConstants.boxShiftTasks);
     await Hive.openBox(AppConstants.boxUserCache);
   }
 
@@ -98,6 +101,9 @@ class HiveService {
 
   static Box<JournalEntry> get journalBox =>
       Hive.box<JournalEntry>(AppConstants.boxJournalEntries);
+
+  static Box<ShiftTask> get shiftBox =>
+      Hive.box<ShiftTask>(AppConstants.boxShiftTasks);
 
   static Box get settingsBox =>
       Hive.box(AppConstants.boxSettings);

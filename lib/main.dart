@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/hive_service.dart';
 import 'core/services/supabase_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 
@@ -18,6 +19,9 @@ void main() async {
 
   // ── Supabase ──────────────────────────────────────────────────────────────
   await SupabaseService.instance.init();
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  await NotificationService.instance.init();
 
   runApp(
     const ProviderScope(

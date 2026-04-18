@@ -30,6 +30,12 @@ class PlannerEntry extends HiveObject {
   @HiveField(7)
   final DateTime createdAt;
 
+  @HiveField(8)
+  final DateTime? endTime;
+
+  @HiveField(9)
+  final int? reminderOffset; // Minutes before due date
+
   PlannerEntry({
     required this.id,
     required this.userId,
@@ -39,6 +45,8 @@ class PlannerEntry extends HiveObject {
     required this.dueDate,
     this.isCompleted = false,
     required this.createdAt,
+    this.endTime,
+    this.reminderOffset,
   });
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -65,6 +73,8 @@ class PlannerEntry extends HiveObject {
     dueDate:     DateTime.parse(map['due_date'] as String),
     isCompleted: map['is_completed'] as bool? ?? false,
     createdAt:   DateTime.parse(map['created_at'] as String),
+    endTime:     map['end_time'] != null ? DateTime.parse(map['end_time'] as String) : null,
+    reminderOffset: map['reminder_offset'] as int?,
   );
 
   Map<String, dynamic> toMap() => {
@@ -76,6 +86,8 @@ class PlannerEntry extends HiveObject {
     'due_date':     dueDate.toIso8601String(),
     'is_completed': isCompleted,
     'created_at':   createdAt.toIso8601String(),
+    'end_time':     endTime?.toIso8601String(),
+    'reminder_offset': reminderOffset,
   };
 
   PlannerEntry copyWith({
@@ -87,6 +99,8 @@ class PlannerEntry extends HiveObject {
     DateTime? dueDate,
     bool? isCompleted,
     DateTime? createdAt,
+    DateTime? endTime,
+    int? reminderOffset,
   }) =>
       PlannerEntry(
         id:          id ?? this.id,
@@ -97,6 +111,8 @@ class PlannerEntry extends HiveObject {
         dueDate:     dueDate ?? this.dueDate,
         isCompleted: isCompleted ?? this.isCompleted,
         createdAt:   createdAt ?? this.createdAt,
+        endTime:     endTime ?? this.endTime,
+        reminderOffset: reminderOffset ?? this.reminderOffset,
       );
 
   @override

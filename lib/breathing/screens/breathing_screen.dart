@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../providers/breathing_provider.dart';
@@ -22,7 +24,16 @@ class BreathingScreen extends ConsumerWidget {
           SafeArea(
             child: Column(
               children: [
-                _TopBar(state: state, onBack: () => Navigator.of(context).pop()),
+                _TopBar(
+                  state: state, 
+                  onBack: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(AppRoutes.dashboard);
+                    }
+                  },
+                ),
                 const Spacer(flex: 1),
                 _PhaseLabel(state: state),
                 const SizedBox(height: 36),
@@ -449,7 +460,13 @@ class _CompletionOverlay extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go(AppRoutes.dashboard);
+                            }
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 36, vertical: 16),

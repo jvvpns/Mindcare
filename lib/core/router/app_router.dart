@@ -25,12 +25,16 @@ import '../../crisis/screens/crisis_screen.dart';
 import '../../referral/screens/referral_screen.dart';
 import '../../breathing/screens/breathing_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../clinical_duty/screens/clinical_duty_screen.dart';
 
 // ── Shell ─────────────────────────────────────────────────────────────────
 import '../../shared/widgets/main_shell.dart';
+import '../../shared/screens/error_screen.dart';
 
 // ── Auth provider ─────────────────────────────────────────────────────────
 import '../../auth/providers/auth_provider.dart';
+import '../../core/services/hive_service.dart';
+import '../../core/constants/app_constants.dart';
 
 // ── Route Name Constants ──────────────────────────────────────────────────
 class AppRoutes {
@@ -55,18 +59,66 @@ class AppRoutes {
   static const String breathing      = '/breathing';
   static const String settings       = '/settings';
   static const String chatHistory    = '/chat-history';
+  static const String clinicalDuty   = '/clinical-duty';
+}
+
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authProvider,
+      (previous, next) {
+        // ONLY trigger a router refresh if the actual authentication status changes.
+        // Ignore minor state ticks like isLoading or error messages.
+        final wasAuth = previous?.isAuthenticated ?? false;
+        final isAuth = next.isAuthenticated;
+        
+        if (wasAuth != isAuth) {
+          // Wrap in a microtask to ensure we don't trigger a router refresh
+          // in the middle of a build frame, which causes assertion crashes.
+          Future.microtask(() => notifyListeners());
+        }
+      },
+    );
+  }
 }
 
 // ── Router Provider ───────────────────────────────────────────────────────
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final notifier = RouterNotifier(ref);
+
+  // Check initial flags for starting location
+  final hasSeenOnboarding = HiveService.settingsBox.get(
+    AppConstants.keyHasSeenOnboarding,
+    defaultValue: false,
+  ) as bool;
+
+  // Determine starting location
+  String initialLocation = AppRoutes.onboarding;
+  if (ref.read(authProvider).isAuthenticated) {
+    initialLocation = AppRoutes.dashboard;
+  } else if (hasSeenOnboarding) {
+    initialLocation = AppRoutes.login;
+  }
 
   return GoRouter(
-    initialLocation: AppRoutes.onboarding,
+    refreshListenable: notifier,
+    initialLocation: initialLocation,
     debugLogDiagnostics: true,
+    errorBuilder: (context, state) => HilwayErrorScreen(
+      errorMessage: state.error?.message,
+    ),
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authProvider);
       final isAuthenticated = authState.isAuthenticated;
       final currentPath = state.matchedLocation;
+
+      // Re-read flag in case it was updated in this session
+      final hasSeenOnboardingReactive = HiveService.settingsBox.get(
+        AppConstants.keyHasSeenOnboarding,
+        defaultValue: false,
+      ) as bool;
 
       final isAuthRoute = [
         AppRoutes.onboarding,
@@ -75,19 +127,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         AppRoutes.tutorial,
       ].contains(currentPath);
 
-      // Not logged in — redirect to login
-      if (!isAuthenticated && !isAuthRoute) {
-        return AppRoutes.login;
+      debugPrint('Router: path=\$currentPath, auth=\$isAuthenticated, seenOnboarding=\$hasSeenOnboardingReactive');
+
+      // ── Access Control ─────────────────────────────────────────────────────
+
+      // 1. Logged In -> Prevent going back to login/signup/onboarding
+      if (isAuthenticated && isAuthRoute && currentPath != AppRoutes.tutorial) {
+        debugPrint('Router: Authenticated & on AuthRoute -> Dashboard');
+        return AppRoutes.dashboard;
       }
 
-      // Logged in — don't allow going back to auth screens
-      if (isAuthenticated && isAuthRoute &&
-          currentPath != AppRoutes.tutorial) {
-        
-        // If they just logged in or opened the app directly (landing on onboarding)
-        // Check if we should go to dashboard or splash. Since 'isAuthRoute' handles onboarding,
-        // we'll send them to the splash screen first. The splash screen automatically goes to dashboard.
-        return AppRoutes.splash;
+      // 2. Not Logged In -> Enforce onboarding or login
+      if (!isAuthenticated && !isAuthRoute) {
+        debugPrint('Router: Not Auth & High Path -> Guarding...');
+        return hasSeenOnboardingReactive ? AppRoutes.login : AppRoutes.onboarding;
+      }
+
+      // 3. Prevent Onboarding if already seen
+      if (currentPath == AppRoutes.onboarding && hasSeenOnboardingReactive) {
+        debugPrint('Router: Onboarding but Seen -> Login/Dashboard');
+        return isAuthenticated ? AppRoutes.dashboard : AppRoutes.login;
       }
 
       return null;
@@ -181,6 +240,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.settings,
             name: 'settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.clinicalDuty,
+            name: 'clinicalDuty',
+            builder: (context, state) => const ClinicalDutyScreen(),
           ),
         ],
       ),

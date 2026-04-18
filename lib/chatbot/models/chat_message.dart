@@ -4,6 +4,7 @@ class ChatMessage {
   final bool isUser;
   final DateTime timestamp;
   final String? detectedEmotion;
+  final String? suggestedAction;
 
   ChatMessage({
     required this.id,
@@ -11,5 +12,7 @@ class ChatMessage {
     required this.isUser,
     required this.timestamp,
     this.detectedEmotion,
+    this.suggestedAction,
   });
 }
+

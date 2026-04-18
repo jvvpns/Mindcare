@@ -29,30 +29,27 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Hero(
-        tag: 'kelly_chat_fab',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.push(AppRoutes.chatbot),
-            customBorder: const CircleBorder(),
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.accent.withValues(alpha: 0.25),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: PhosphorIcon(PhosphorIconsFill.firstAid, color: Colors.white, size: 28),
-              ),
+      floatingActionButton: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push(AppRoutes.chatbot),
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accent.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: PhosphorIcon(PhosphorIconsFill.firstAid, color: Colors.white, size: 28),
             ),
           ),
         ),

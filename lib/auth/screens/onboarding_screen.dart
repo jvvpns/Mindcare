@@ -4,6 +4,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/hive_service.dart';
+import '../../shared/widgets/hilway_background.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,8 +20,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: HilwayBackground(
+        child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
@@ -148,7 +151,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // ── CTA Button ───────────────────────────────────────────
               ElevatedButton(
                 onPressed: _agreed
-                    ? () => context.go(AppRoutes.login)
+                    ? () async {
+                        // Persist onboarding completion
+                        await HiveService.settingsBox.put(
+                          AppConstants.keyHasSeenOnboarding,
+                          true,
+                        );
+                        if (mounted) {
+                          context.go(AppRoutes.login);
+                        }
+                      }
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -169,6 +181,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 24),
             ],
           ),
+        ),
         ),
       ),
     );

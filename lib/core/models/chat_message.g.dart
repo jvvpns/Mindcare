@@ -1,4 +1,10 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
 part of 'chat_message.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class ChatMessageAdapter extends TypeAdapter<ChatMessage> {
   @override
@@ -15,7 +21,7 @@ class ChatMessageAdapter extends TypeAdapter<ChatMessage> {
       content: fields[1] as String,
       role: fields[2] as String,
       sentAt: fields[3] as DateTime,
-      isCrisisDetected: fields[4] as bool? ?? false,
+      isCrisisDetected: fields[4] as bool,
       sessionId: fields[5] as String?,
     );
   }

@@ -66,5 +66,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<key>NSHealthShareUsageDescription</key>
+	<string>HILWAY needs access to your sleep data to help Kelly provide personalized wellness insights and burnout prevention tips.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>HILWAY can log your mindfulness minutes after breathing exercises to help you track your self-care progress.</string>
 </dict>
 </plist>

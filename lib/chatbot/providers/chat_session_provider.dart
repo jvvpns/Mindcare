@@ -50,7 +50,7 @@ class ChatSessionsNotifier extends StateNotifier<List<ChatSession>> {
     try {
       final prompt = 'Summarize this user message in 3-4 words for a chat title. Only return the title, no quotes or intro: "$firstMessage"';
       final geminiService = _ref.read(Provider((ref) => GeminiService())); // Read directly to avoid cycle if any
-      final title = await geminiService.sendMessage(prompt);
+      final title = await geminiService.sendMessage(text: prompt);
       
       final cleanTitle = title.replaceAll('"', '').trim();
       if (cleanTitle.isNotEmpty) {

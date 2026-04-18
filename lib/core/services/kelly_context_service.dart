@@ -17,7 +17,11 @@ class KellyContextService {
   // ── 1. User Context Summary (System Prompt Part) ─────────────────────────
   String buildUserContextSummary() {
     final buffer = StringBuffer();
-    buffer.writeln('=== User Health Context ===');
+    final now = DateTime.now();
+    buffer.writeln('=== System Context ===');
+    buffer.writeln('Current Date: ${DateFormat('EEEE, MMMM d, yyyy').format(now)}');
+    buffer.writeln('Current Time: ${DateFormat('h:mm a').format(now)}');
+    buffer.writeln('\n=== User Health Context ===');
 
     // Recent moods (last 7 entries)
     try {
@@ -54,6 +58,24 @@ class KellyContextService {
       buffer.writeln('Burnout Assessment: (unavailable)');
     }
 
+    // Recent Journal Entries
+    try {
+      final journals = HiveService.journalBox.values.toList();
+      if (journals.isNotEmpty) {
+        journals.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final recentJournals = journals.take(3).toList();
+        buffer.writeln('Recent Journal Entries:');
+        for (final entry in recentJournals) {
+          final dateStr = DateFormat('MMM d').format(entry.createdAt);
+          buffer.writeln('- [$dateStr] ${entry.title}: "${entry.content}"');
+        }
+      } else {
+        buffer.writeln('Journal: No recent entries.');
+      }
+    } catch (_) {
+      buffer.writeln('Journal: (unavailable)');
+    }
+
     // Today's mood check — so Kelly won't ask again if already logged
     try {
       final now = DateTime.now();
@@ -69,6 +91,27 @@ class KellyContextService {
       }
     } catch (_) {
       // non-fatal
+    }
+
+    // Upcoming Academic Planner Tasks
+    try {
+      final now = DateTime.now();
+      final upcomingTasks = HiveService.plannerBox.values
+          .where((t) => t.dueDate.isAfter(now.subtract(const Duration(days: 1))) && !t.isCompleted)
+          .toList();
+      if (upcomingTasks.isNotEmpty) {
+        upcomingTasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        final topTasks = upcomingTasks.take(5).toList();
+        buffer.writeln('Upcoming Academic Tasks:');
+        for (final task in topTasks) {
+          final dateStr = DateFormat('MMM d').format(task.dueDate);
+          buffer.writeln('- [${task.category}] ${task.title} (Due: $dateStr)');
+        }
+      } else {
+        buffer.writeln('Academic Planner: No pending upcoming tasks right now.');
+      }
+    } catch (_) {
+      buffer.writeln('Academic Planner: (unavailable)');
     }
 
     buffer.writeln('=== End Context ===');

@@ -104,46 +104,53 @@ class _MoodBottomSheetState extends ConsumerState<MoodBottomSheet> {
             const SizedBox(height: 16),
 
             // Emoji Selector Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(
-                AppConstants.moodEmojis.length,
-                (index) => GestureDetector(
-                  onTap: () => setState(() => _selectedMood = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _selectedMood == index
-                          ? AppColors.primary.withValues(alpha: 0.15)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _selectedMood == index
-                            ? AppColors.primary
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          AppConstants.moodEmojis[index],
-                          style: const TextStyle(fontSize: 32),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          AppConstants.moodLabels[index],
-                          style: AppTextStyles.caption.copyWith(
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: List.generate(
+                  AppConstants.moodEmojis.length,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedMood = index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _selectedMood == index
+                              ? AppColors.primary.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
                             color: _selectedMood == index
                                 ? AppColors.primary
-                                : AppColors.textSecondary,
-                            fontWeight: _selectedMood == index
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                                : Colors.transparent,
+                            width: 2,
                           ),
                         ),
-                      ],
+                        child: Column(
+                          children: [
+                            Text(
+                              AppConstants.moodEmojis[index],
+                              style: const TextStyle(fontSize: 32),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              AppConstants.moodLabels[index],
+                              style: AppTextStyles.caption.copyWith(
+                                color: _selectedMood == index
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                                fontWeight: _selectedMood == index
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

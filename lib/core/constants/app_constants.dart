@@ -24,9 +24,13 @@ class AppConstants {
   static const String boxSettings       = 'settings';
   static const String boxUserCache      = 'user_cache';
   static const String boxJournalEntries = 'journal_entries';
+  static const String boxShiftTasks     = 'shift_tasks';
 
   // ── Hive Keys ─────────────────────────────────────────────────────────────
-  static const String keyHasSeenChatTutorial = 'has_seen_chat_tutorial';
+  static const String keyHasSeenOnboarding     = 'has_seen_onboarding';
+  static const String keyHasSeenChatTutorial   = 'has_seen_chat_tutorial';
+  static const String keyDailyUsageCount       = 'daily_usage_count';
+  static const String keyLastUsageReset        = 'last_usage_reset';
 
   // ── Supabase Table Names ──────────────────────────────────────────────────
   static const String tableMoodLogs       = 'mood_logs';
@@ -44,11 +48,14 @@ class AppConstants {
   static const int hiveTypeAssessmentResult = 4;
   static const int hiveTypeJournalEntry     = 5;
   static const int hiveTypeChatSession      = 6;
+  static const int hiveTypeShiftTask       = 8;
+
 
   // ── App Config ────────────────────────────────────────────────────────────
-  static const int  maxChatHistory  = 50;
-  static const int  stressScaleMin  = 1;
-  static const int  stressScaleMax  = 5;
+  static const int  maxDailyMessages = 20; // Per student per day
+  static const int  maxChatHistory   = 50;
+  static const int  stressScaleMin   = 1;
+  static const int  stressScaleMax   = 5;
 
   // ── Chatbot Disclaimer (shown once to new users) ──────────────────────────
   static const String chatDisclaimerTitle = 'Before you chat with Kelly';
@@ -80,10 +87,37 @@ class AppConstants {
 
   // ── Mood Options ──────────────────────────────────────────────────────────
   static const List<String> moodLabels = [
-    'Happy', 'Angry', 'Sleepy', 'Bored'
+    'Calm', 'Happy', 'Energetic', 'Anxious', 'Sad', 'Depressed'
   ];
   static const List<String> moodEmojis = [
-    '😄', '😡', '😴', '😒'
+    '😌', '😊', '🤩', '😰', '😢', '😔'
+  ];
+  static const List<String> moodAnimatedAssets = [
+    'assets/emoji/calm.webp',
+    'assets/emoji/happy.webp',
+    'assets/emoji/energetic.webp',
+    'assets/emoji/anxious.webp',
+    'assets/emoji/sad.webp',
+    'assets/emoji/depressed.webp',
+  ];
+
+  // ── Motivational Quotes ───────────────────────────────────────────────────
+  static const List<String> dailyQuotes = [
+    "Kaya mo 'yan, Future Nurse!",
+    "Take it one patient at a time.",
+    "Breathe. You have the skills and the heart for this.",
+    "Your compassion is making a difference today.",
+    "Laban lang! Every shift is a step closer to your dream.",
+    "You are stronger than your most challenging duty.",
+    "Pahinga rin pag may time. Self-care is essential.",
+    "A caring heart needs a rested mind.",
+    "Nursing is tough, but so are you.",
+    "Remember why you started. Padayon!",
+    "Mistakes are just lessons in disguise. Keep learning.",
+    "One shift, one step, one day at a time.",
+    "You bring comfort and healing to those who need it most.",
+    "Hinga malalim. You're doing great!",
+    "Your dedication will all be worth it in the end."
   ];
 
   // ── Kelly Emotion Constants ────────────────────────────────────────────────
@@ -94,6 +128,18 @@ class AppConstants {
   static const String kellyConcerned = 'concerned';
   static const String kellyCalm      = 'calm';
   static const String kellySurprised = 'surprised';
+
+  // ── Kelly Nursing Nudges (Dashboard Interactions) ─────────────────────────
+  static const List<String> kellyNudges = [
+    "Kaya mo 'yan, Future Nurse! I'm right here with you. ✨",
+    "Remember to take 3 deep breaths before your next patient. 🌬️",
+    "Don't forget to hydrate! Your brain needs water to stay sharp. 💧",
+    "You're making a real difference today, even if it feels tough. ❤️",
+    "One shift, one patient, one step at a time. Laban! 🦾",
+    "Did you know? A quick stretch can boost your energy for the next hour! 🤸",
+    "You've got the heart and the skills. Trust yourself. 🩺",
+    "Pahinga rin pag may time. You can't pour from an empty cup. ☕",
+  ];
 
   // ── Tutorial Steps (onboarding walkthrough) ───────────────────────────────
   static const List<Map<String, String>> tutorialSteps = [

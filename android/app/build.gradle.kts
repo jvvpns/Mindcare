@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.hilway"
     compileSdk = 36 // Updated to fix AndroidX dependency requirements
-    ndkVersion = "27.0.12077973" // Default NDK for AGP 8.x
+    ndkVersion = "28.2.13676358" // Required by jni plugin
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -45,5 +45,5 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
