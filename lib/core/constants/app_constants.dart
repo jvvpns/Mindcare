@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
@@ -16,14 +17,26 @@ class AppConstants {
   static const String geminiModel   = 'gemini-3.1-flash-lite-preview';
 
   // ── Backend ───────────────────────────────────────────────────────────────
+  // ── Backend ───────────────────────────────────────────────────────────────
   static String get backendUrl {
+    // 1. Try .env file (bundled as asset)
     final url = dotenv.get('BACKEND_URL', fallback: '');
     if (url.isNotEmpty) return url;
+
+    // 2. Try --dart-define (passed during flutter build)
+    const defineUrl = String.fromEnvironment('BACKEND_URL');
+    if (defineUrl.isNotEmpty) return defineUrl;
     
-    // Auto-detect local development endpoint
-    if (const bool.fromEnvironment('dart.library.js_util')) return 'http://127.0.0.1:8003';
-    // 10.0.2.2 is the special alias to your host loopback interface in Android Emulator
-    return 'http://10.0.2.2:8003'; 
+    // 3. Fallback for local development
+    // Only use localhost if we are in debug mode
+    if (kDebugMode) {
+      if (const bool.fromEnvironment('dart.library.js_util')) return 'http://127.0.0.1:8003';
+      return 'http://10.0.2.2:8003';
+    }
+    
+    // If we're in release mode and have no URL, the app will likely fail requests.
+    // You should ensure BACKEND_URL is set in your .env before building.
+    return '';
   }
 
   // ── Hive Box Names ────────────────────────────────────────────────────────

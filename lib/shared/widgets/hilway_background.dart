@@ -40,7 +40,7 @@ class _HilwayBackgroundState extends State<HilwayBackground>
   List<Color> _targetColors = AppColors.emotionToColors['default']!;
 
   // ── Parallax state ───────────────────────────────────────────────────────
-  double? _scrollOffset = 0.0;
+  final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
 
   @override
   void initState() {
@@ -76,6 +76,7 @@ class _HilwayBackgroundState extends State<HilwayBackground>
     _drift2.dispose();
     _drift3.dispose();
     _colorController.dispose();
+    _scrollOffset.dispose();
     super.dispose();
   }
 
@@ -106,9 +107,7 @@ class _HilwayBackgroundState extends State<HilwayBackground>
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification is ScrollUpdateNotification) {
-            setState(() {
-              _scrollOffset = notification.metrics.pixels;
-            });
+            _scrollOffset.value = notification.metrics.pixels;
           }
           return false;
         },
@@ -116,34 +115,39 @@ class _HilwayBackgroundState extends State<HilwayBackground>
           children: [
             // ── Animated & Parallax Background Layer ──
             Positioned.fill(
-              child: RepaintBoundary(
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_t1, _t2, _t3, _colorController]),
-                  builder: (context, _) {
-                    final color1 = Color.lerp(_currentColors[0], _targetColors[0], _colorController.value) ?? _currentColors[0];
-                    final color2 = Color.lerp(_currentColors[1], _targetColors[1], _colorController.value) ?? _currentColors[1];
-  
-                    final size = MediaQuery.of(context).size;
-                    
-                    // Base positions with drift
-                    final orb1 = Offset(size.width * _lerpV(0.05, 0.35, _t1.value), size.height * _lerpV(0.00, 0.18, _t2.value));
-                    final orb2 = Offset(size.width * _lerpV(0.55, 0.95, _t2.value), size.height * _lerpV(0.65, 0.95, _t3.value));
-                    final orb3 = Offset(size.width * _lerpV(0.60, 0.90, _t3.value), size.height * _lerpV(0.25, 0.50, _t1.value));
-  
-                    return CustomPaint(
-                      painter: _BackgroundPainter(
-                        orb1: orb1,
-                        orb2: orb2,
-                        orb3: orb3,
-                        baseColor: color1,
-                        accentColor: color2,
-                        emotion: widget.emotion,
-                        touchOrb: _touchPos != null ? _orbPos : null,
-                        scrollOffset: _scrollOffset ?? 0.0, // Fallback for hot-reload safety
-                      ),
-                    );
-                  },
-                ),
+              child: ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, scrollVal, _) {
+                  return RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([_t1, _t2, _t3, _colorController]),
+                      builder: (context, _) {
+                        final color1 = Color.lerp(_currentColors[0], _targetColors[0], _colorController.value) ?? _currentColors[0];
+                        final color2 = Color.lerp(_currentColors[1], _targetColors[1], _colorController.value) ?? _currentColors[1];
+      
+                        final size = MediaQuery.of(context).size;
+                        
+                        // Base positions with drift
+                        final orb1 = Offset(size.width * _lerpV(0.05, 0.35, _t1.value), size.height * _lerpV(0.00, 0.18, _t2.value));
+                        final orb2 = Offset(size.width * _lerpV(0.55, 0.95, _t2.value), size.height * _lerpV(0.65, 0.95, _t3.value));
+                        final orb3 = Offset(size.width * _lerpV(0.60, 0.90, _t3.value), size.height * _lerpV(0.25, 0.50, _t1.value));
+      
+                        return CustomPaint(
+                          painter: _BackgroundPainter(
+                            orb1: orb1,
+                            orb2: orb2,
+                            orb3: orb3,
+                            baseColor: color1,
+                            accentColor: color2,
+                            emotion: widget.emotion,
+                            touchOrb: _touchPos != null ? _orbPos : null,
+                            scrollOffset: scrollVal,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
             

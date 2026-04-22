@@ -5,8 +5,14 @@
 # Ensure we are in the project root
 cd "$(dirname "$0")/.."
 
-echo "🚀 Building Flutter Web (Release)..."
-flutter build web --release
+echo "🚀 Building Flutter Web (Release - CanvasKit)..."
+# Check if BACKEND_URL is set in environment, if not, warn user
+if [ -z "$BACKEND_URL" ]; then
+    echo "⚠️  BACKEND_URL not found in shell environment."
+    echo "   Ensure it is set in your .env file or run: export BACKEND_URL=your_url"
+fi
+# We use CanvasKit renderer for smoother glassmorphism and animations
+flutter build web --release --web-renderer canvaskit
 
 echo "📦 Injecting Vercel configuration for SPA routing..."
 if [ -f "vercel.json" ]; then
