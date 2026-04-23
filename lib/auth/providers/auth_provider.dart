@@ -45,6 +45,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final currentUser = SupabaseService.currentUser;
     state = AuthState(user: currentUser);
 
+    // If user is already logged in (e.g., returning to PWA), trigger a background sync
+    // to ensure data from other devices (like localhost) is pulled down.
+    if (currentUser != null) {
+      debugPrint('AuthNotifier: User already logged in. Triggering background pullAllData...');
+      SyncService.instance.pullAllData().catchError((e) {
+        debugPrint('AuthNotifier: Background sync error: $e');
+      });
+    }
+
     // Listen for auth state changes (login, logout, token refresh)
     SupabaseService.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;

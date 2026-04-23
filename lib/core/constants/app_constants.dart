@@ -6,7 +6,7 @@ class AppConstants {
 
   static const String appName    = 'HILWAY';
   static const String appTagline = 'Your holistic mental health companion.';
-  static const String appVersion = '1.0.1'; // ── Internal Version Control ──
+  static const String appVersion = '1.1.1'; // ── Internal Version Control ──
 
   // ── Supabase ──────────────────────────────────────────────────────────────
   static String get supabaseUrl     => dotenv.get('SUPABASE_URL');

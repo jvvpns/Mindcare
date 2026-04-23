@@ -11,6 +11,8 @@ import 'package:hilway/core/models/stress_rating.dart';
 import 'package:hilway/core/models/planner_entry.dart';
 import 'package:hilway/core/models/journal_entry.dart';
 import 'package:hilway/clinical_duty/models/shift_task.dart';
+import 'package:hilway/core/models/refuel_log.dart';
+import 'package:hilway/core/models/assessment_result.dart';
 import 'package:hilway/core/services/hive_service.dart';
 
 /// Senior-grade SyncService with State Machine and Exponential Backoff.
@@ -268,8 +270,23 @@ class SyncService {
         final task = ShiftTask.fromMap(json);
         await HiveService.shiftBox.put(task.id, task);
       }
+
+      // 6. Pull & Save Refuel Logs (Meal MAR)
+      final refuels = await SupabaseService.client.from('refuel_logs').select().eq('user_id', userId);
+      for (var json in refuels) {
+        final log = RefuelLog.fromMap(json);
+        final key = '${log.date.year}-${log.date.month}-${log.date.day}';
+        await HiveService.refuelBox.put(key, log);
+      }
+
+      // 7. Pull & Save Assessment Results (AI Resilience, PSS-10, etc.)
+      final assessments = await SupabaseService.client.from('assessment_results').select().eq('user_id', userId);
+      for (var json in assessments) {
+        final result = AssessmentResult.fromMap(json);
+        await HiveService.assessmentBox.put(result.id, result);
+      }
       
-      debugPrint('SyncService: Successfully pulled ${moods.length} moods, ${planner.length} tasks, ${shifts.length} shift duties.');
+      debugPrint('SyncService: Successfully pulled ${moods.length} moods, ${planner.length} tasks, ${shifts.length} shift duties, ${refuels.length} meal logs, and ${assessments.length} assessments.');
     } catch (e) {
       debugPrint('SyncService: Global pull failed: $e');
     }
