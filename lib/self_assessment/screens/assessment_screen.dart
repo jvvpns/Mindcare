@@ -7,6 +7,8 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/router/app_router.dart';
 import '../../shared/widgets/responsive_wrapper.dart';
+import '../../shared/widgets/hilway_glass.dart';
+import '../../core/utils/device_utils.dart';
 import '../providers/self_assessment_provider.dart';
 
 class SelfAssessmentScreen extends ConsumerWidget {
@@ -112,16 +114,16 @@ class SelfAssessmentScreen extends ConsumerWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
+              blurRadius: DeviceUtils.isMobileWeb ? 5 : 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: ClipRRect(
+        child: HilwayGlass(
           borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Padding(
+          sigmaX: 12,
+          sigmaY: 12,
+          child: Padding(
               padding: const EdgeInsets.all(0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,8 +175,7 @@ class SelfAssessmentScreen extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildCooldownBadge(Duration remaining) {

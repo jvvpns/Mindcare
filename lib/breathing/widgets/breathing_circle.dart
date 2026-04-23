@@ -2,6 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/device_utils.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../providers/breathing_provider.dart';
 
 // ── Progress Ring Painter ──────────────────────────────────────────────────
@@ -354,10 +356,11 @@ class _GlassSphere extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = 190.0 * scale;
-    return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
+    return HilwayGlass(
+      borderRadius: BorderRadius.circular(size / 2),
+      sigmaX: 24,
+      sigmaY: 24,
+      child: Container(
           width: size,
           height: size,
           decoration: BoxDecoration(
@@ -378,12 +381,12 @@ class _GlassSphere extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.30 * scale),
-                blurRadius: 40,
+                blurRadius: DeviceUtils.isMobileWeb ? 20 : 40,
                 spreadRadius: -4,
               ),
               BoxShadow(
                 color: color.withValues(alpha: 0.15 * scale),
-                blurRadius: 80,
+                blurRadius: DeviceUtils.isMobileWeb ? 40 : 80,
                 spreadRadius: 8,
               ),
             ],
@@ -410,7 +413,6 @@ class _GlassSphere extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

@@ -21,22 +21,23 @@ class CinematicIntroScreen extends ConsumerStatefulWidget {
   const CinematicIntroScreen({super.key});
 
   @override
-  ConsumerState<CinematicIntroScreen> createState() => _CinematicIntroScreenState();
+  ConsumerState<CinematicIntroScreen> createState() =>
+      _CinematicIntroScreenState();
 }
 
 class _CinematicIntroScreenState extends ConsumerState<CinematicIntroScreen>
     with TickerProviderStateMixin {
   // ── Animation Controllers ─────────────────────────────────────────────────
-  late final AnimationController _masterController;    // 10s total timeline
-  late final AnimationController _pulseController;     // Continuous orb pulse
-  late final AnimationController _colorController;     // Brand color cycling
+  late final AnimationController _masterController; // 10s total timeline
+  late final AnimationController _pulseController; // Continuous orb pulse
+  late final AnimationController _colorController; // Brand color cycling
 
   // ── Derived Animations ────────────────────────────────────────────────────
-  late final Animation<double> _orbFadeIn;       // 0.0s → 3.0s
-  late final Animation<double> _orbScale;        // Subtle breathe
-  late final Animation<double> _titleFadeIn;     // 2.4s → 5.6s
-  late final Animation<double> _subtextFadeIn;   // 3.6s → 6.4s
-  late final Animation<double> _sceneDissolve;   // 9.0s → 10.0s (fade out)
+  late final Animation<double> _orbFadeIn; // 0.0s → 3.0s
+  late final Animation<double> _orbScale; // Subtle breathe
+  late final Animation<double> _titleFadeIn; // 2.4s → 5.6s
+  late final Animation<double> _subtextFadeIn; // 3.6s → 6.4s
+  late final Animation<double> _sceneDissolve; // 9.0s → 10.0s (fade out)
   late final Animation<double> _bgGlowIntensity; // 1.6s → 6.0s
 
   // ── Kelly Emotion Sequence ────────────────────────────────────────────────
@@ -52,12 +53,12 @@ class _CinematicIntroScreenState extends ConsumerState<CinematicIntroScreen>
 
   // ── Brand Color Sequence (Sync with KellyOrbMascot) ───────────────────────
   static const List<Color> _brandColors = [
-    Color(0xFFF9F8F6),               // Default — Off-white
-    Color(0xFF4FC3F7),               // Happy — Sky Blue
-    Color(0xFF4DB6AC),               // Calm — Deep Teal/Mint
-    Color(0xFFFFD54F),               // Excited — Gold
-    Color(0xFFF06292),               // Surprised — Pink
-    Color(0xFF4FC3F7),               // Happy
+    Color(0xFFF9F8F6), // Default — Off-white
+    Color(0xFF4FC3F7), // Happy — Sky Blue
+    Color(0xFF4DB6AC), // Calm — Deep Teal/Mint
+    Color(0xFFFFD54F), // Excited — Gold
+    Color(0xFFF06292), // Surprised — Pink
+    Color(0xFF4FC3F7), // Happy
   ];
 
   int _currentColorIndex = 0;
@@ -97,10 +98,7 @@ class _CinematicIntroScreenState extends ConsumerState<CinematicIntroScreen>
 
     // ── Orb breathing scale via pulse controller ─────────────────────────
     _orbScale = Tween<double>(begin: 1.0, end: 1.15).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOutSine,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
 
     // ── Background glow intensity: 16% → 60% of timeline ────────────────
@@ -145,25 +143,32 @@ class _CinematicIntroScreenState extends ConsumerState<CinematicIntroScreen>
 
     // Navigate to the correct screen after animation completes
     _masterController.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted && !_navigated) {
-        _navigated = true;
-        
-        // Determine destination based on auth state
-        final isAuthenticated = ref.read(authProvider).isAuthenticated;
-        final hasSeenOnboarding = HiveService.settingsBox.get(
-          AppConstants.keyHasSeenOnboarding,
-          defaultValue: false,
-        ) as bool;
-
-        if (isAuthenticated) {
-          context.go(AppRoutes.splash);
-        } else if (hasSeenOnboarding) {
-          context.go(AppRoutes.login);
-        } else {
-          context.go(AppRoutes.onboarding);
-        }
+      if (status == AnimationStatus.completed && mounted) {
+        _navigateToNextScreen();
       }
     });
+  }
+
+  void _navigateToNextScreen() {
+    if (_navigated) return;
+    _navigated = true;
+
+    // Determine destination based on auth state
+    final isAuthenticated = ref.read(authProvider).isAuthenticated;
+    final hasSeenOnboarding =
+        HiveService.settingsBox.get(
+              AppConstants.keyHasSeenOnboarding,
+              defaultValue: false,
+            )
+            as bool;
+
+    if (isAuthenticated) {
+      context.go(AppRoutes.splash);
+    } else if (hasSeenOnboarding) {
+      context.go(AppRoutes.login);
+    } else {
+      context.go(AppRoutes.onboarding);
+    }
   }
 
   void _onColorCycleComplete(AnimationStatus status) {
@@ -205,101 +210,133 @@ class _CinematicIntroScreenState extends ConsumerState<CinematicIntroScreen>
             _colorController.value,
           )!;
 
-          return Opacity(
-            opacity: _sceneDissolve.value,
-            child: Stack(
-              children: [
-                // ── Layer 1: Animated Background Gradient ─────────────────
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _CinematicBgPainter(
-                      orbColor: orbColor,
-                      glowIntensity: _bgGlowIntensity.value,
-                      orbFade: _orbFadeIn.value,
+          return GestureDetector(
+            onTap: _navigateToNextScreen,
+            behavior: HitTestBehavior.opaque,
+            child: Opacity(
+              opacity: _sceneDissolve.value,
+              child: Stack(
+                children: [
+                  // ── Layer 1: Animated Background Gradient ─────────────────
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _CinematicBgPainter(
+                        orbColor: orbColor,
+                        glowIntensity: _bgGlowIntensity.value,
+                        orbFade: _orbFadeIn.value,
+                      ),
                     ),
                   ),
-                ),
 
-                // ── Layer 2: Centered Content ────────────────────────────
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ── Kelly Orb Mascot ───────────────────────────────
-                      Opacity(
-                        opacity: _orbFadeIn.value,
-                        child: Transform.scale(
-                          scale: _orbScale.value,
-                          child: SizedBox(
-                            width: 140,
-                            height: 140,
-                            child: KellyOrbMascot(
-                              emotion: _emotions[_currentColorIndex],
-                              size: 100,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 36),
-
-                      // ── "Hilway" Heading ───────────────────────────────
-                      Opacity(
-                        opacity: _titleFadeIn.value,
-                        child: Transform.translate(
-                          offset: Offset(0, 12 * (1.0 - _titleFadeIn.value)),
-                          child: Text(
-                            'Hilway',
-                            style: TextStyle(
-                              fontFamily: 'PlusJakartaSans',
-                              fontSize: 52,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: 6,
-                              height: 1.1,
-                              shadows: [
-                                Shadow(
-                                  color: orbColor.withValues(alpha: 0.5),
-                                  blurRadius: 30,
-                                ),
-                                Shadow(
-                                  color: orbColor.withValues(alpha: 0.2),
-                                  blurRadius: 60,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      // ── Subtext ────────────────────────────────────────
-                      Opacity(
-                        opacity: _subtextFadeIn.value,
-                        child: Transform.translate(
-                          offset: Offset(0, 8 * (1.0 - _subtextFadeIn.value)),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 48),
-                            child: Text(
-                              'Holistic Inner Life Well-being\nand AI for You',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'PlusJakartaSans',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w300,
-                                color: Colors.white.withValues(alpha: 0.70),
-                                letterSpacing: 1.2,
-                                height: 1.6,
+                  // ── Layer 2: Centered Content ────────────────────────────
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── Kelly Orb Mascot ───────────────────────────────
+                        Opacity(
+                          opacity: _orbFadeIn.value,
+                          child: Transform.scale(
+                            scale: _orbScale.value,
+                            child: SizedBox(
+                              width: 140,
+                              height: 140,
+                              child: KellyOrbMascot(
+                                emotion: _emotions[_currentColorIndex],
+                                size: 100,
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(height: 36),
+
+                        // ── "Hilway" Heading ───────────────────────────────
+                        Opacity(
+                          opacity: _titleFadeIn.value,
+                          child: Transform.translate(
+                            offset: Offset(0, 12 * (1.0 - _titleFadeIn.value)),
+                            child: Text(
+                              'Hilway',
+                              style: TextStyle(
+                                fontFamily: 'PlusJakartaSans',
+                                fontSize: 52,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 6,
+                                height: 1.1,
+                                shadows: [
+                                  Shadow(
+                                    color: orbColor.withValues(alpha: 0.5),
+                                    blurRadius: 30,
+                                  ),
+                                  Shadow(
+                                    color: orbColor.withValues(alpha: 0.2),
+                                    blurRadius: 60,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ── Subtext ────────────────────────────────────────
+                        Opacity(
+                          opacity: _subtextFadeIn.value,
+                          child: Transform.translate(
+                            offset: Offset(0, 8 * (1.0 - _subtextFadeIn.value)),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 48,
+                              ),
+                              child: Text(
+                                'Holistic Inner Life Well-being\nand AI for You',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'PlusJakartaSans',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.white.withValues(alpha: 0.70),
+                                  letterSpacing: 1.2,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+
+                  // ── Layer 3: Skip Hint ───────────────────────────────────
+                  Positioned(
+                    bottom: 40,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Opacity(
+                        opacity:
+                            (_masterController.value > 0.2 &&
+                                _masterController.value < 0.8)
+                            ? 0.4
+                            : 0.0,
+                        child: Text(
+                          'Tap to skip',
+                          style: TextStyle(
+                            fontFamily: 'PlusJakartaSans',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -328,10 +365,7 @@ class _CinematicBgPainter extends CustomPainter {
     if (size.isEmpty) return;
 
     // ── Base: Pure black ─────────────────────────────────────────────────
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = Colors.black,
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black);
 
     // ── Halo: Large, ultra-soft radial gradient centered behind the orb ──
     final center = Offset(size.width / 2, size.height * 0.38);
@@ -357,16 +391,19 @@ class _CinematicBgPainter extends CustomPainter {
 
       // Secondary halo (wider, softer)
       final halo2Paint = Paint()
-        ..shader = RadialGradient(
-          center: Alignment.center,
-          radius: 1.0,
-          colors: [
-            orbColor.withValues(alpha: 0.06 * effectiveOpacity),
-            orbColor.withValues(alpha: 0.015 * effectiveOpacity),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.4, 1.0],
-        ).createShader(Rect.fromCircle(center: center, radius: maxRadius * 1.4));
+        ..shader =
+            RadialGradient(
+              center: Alignment.center,
+              radius: 1.0,
+              colors: [
+                orbColor.withValues(alpha: 0.06 * effectiveOpacity),
+                orbColor.withValues(alpha: 0.015 * effectiveOpacity),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.4, 1.0],
+            ).createShader(
+              Rect.fromCircle(center: center, radius: maxRadius * 1.4),
+            );
 
       canvas.drawCircle(center, maxRadius * 1.4, halo2Paint);
 

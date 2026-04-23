@@ -10,6 +10,7 @@ import '../../core/constants/app_text_styles.dart';
 import '../../core/constants/app_constants.dart';
 import '../providers/journal_provider.dart';
 import '../../shared/widgets/hilway_background.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../../shared/widgets/hilway_card.dart';
 import '../../chatbot/providers/kelly_state_provider.dart';
 import '../../shared/widgets/responsive_wrapper.dart';
@@ -60,7 +61,11 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                 color: AppColors.crisis.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_outline_rounded, color: AppColors.crisis, size: 32),
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.crisis,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 16),
             const Text('Delete Entry?', style: AppTextStyles.headingSmall),
@@ -68,7 +73,9 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
             Text(
               '"$entryTitle" will be permanently removed.',
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -79,7 +86,9 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                   backgroundColor: AppColors.crisis,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
                 child: const Text(
@@ -116,14 +125,14 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
   @override
   Widget build(BuildContext context) {
     final entries = ref.watch(journalProvider);
-    
+
     // ── Search Filtering ───────────────────────────────────────────────────
     final filteredEntries = entries.where((e) {
       final query = _searchQuery.toLowerCase();
-      return e.title.toLowerCase().contains(query) || 
-             e.content.toLowerCase().contains(query);
+      return e.title.toLowerCase().contains(query) ||
+          e.content.toLowerCase().contains(query);
     }).toList();
-    
+
     final effectiveEmotion = ref.watch(globalBackgroundEmotionProvider);
 
     return Scaffold(
@@ -143,32 +152,46 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                         itemCount: filteredEntries.length,
                         itemBuilder: (context, index) {
                           final entry = filteredEntries[index];
-                          final formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(entry.createdAt);
-  
+                          final formattedDate = DateFormat(
+                            'MMM d, yyyy • h:mm a',
+                          ).format(entry.createdAt);
+
                           // ── Mood Color Logic ─────────────────────────────────
                           Color glowColor = AppColors.primary;
                           if (entry.moodIndex != null) {
                             final mIndex = entry.moodIndex!.toInt();
-                            switch(mIndex) {
-                              case 0: glowColor = AppColors.crisis; break; // Sad
-                              case 1: glowColor = AppColors.moodConcerned; break;
-                              case 2: glowColor = AppColors.textSecondary; break; // Neutral
-                              case 3: glowColor = AppColors.moodHappy; break; // Calm/Sky
-                              case 4: glowColor = AppColors.warning; break; // Motivated
+                            switch (mIndex) {
+                              case 0:
+                                glowColor = AppColors.crisis;
+                                break; // Sad
+                              case 1:
+                                glowColor = AppColors.moodConcerned;
+                                break;
+                              case 2:
+                                glowColor = AppColors.textSecondary;
+                                break; // Neutral
+                              case 3:
+                                glowColor = AppColors.moodHappy;
+                                break; // Calm/Sky
+                              case 4:
+                                glowColor = AppColors.warning;
+                                break; // Motivated
                             }
                           }
-  
+
                           return Dismissible(
                             key: Key(entry.id),
                             direction: DismissDirection.endToStart,
-                            confirmDismiss: (_) => _confirmDelete(context, entry.title),
+                            confirmDismiss: (_) =>
+                                _confirmDelete(context, entry.title),
                             onDismissed: (_) {
                               HapticFeedback.heavyImpact();
                               _deleteEntry(context, ref, entry.id);
                             },
                             background: _buildDeleteBackground(),
                             child: GestureDetector(
-                              onTap: () => context.push('/journal/edit', extra: entry),
+                              onTap: () =>
+                                  context.push('/journal/edit', extra: entry),
                               child: HilwayCard(
                                 isGlass: true,
                                 glowColor: glowColor.withValues(alpha: 0.25),
@@ -178,15 +201,27 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           formattedDate,
-                                          style: AppTextStyles.labelSmall.copyWith(color: AppColors.textTertiary),
+                                          style: AppTextStyles.labelSmall
+                                              .copyWith(
+                                                color: AppColors.textTertiary,
+                                              ),
                                         ),
-                                        if (entry.moodIndex != null && entry.moodIndex! >= 0 && entry.moodIndex! < AppConstants.moodAnimatedAssets.length)
+                                        if (entry.moodIndex != null &&
+                                            entry.moodIndex! >= 0 &&
+                                            entry.moodIndex! <
+                                                AppConstants
+                                                    .moodAnimatedAssets
+                                                    .length)
                                           Image.asset(
-                                            AppConstants.moodAnimatedAssets[entry.moodIndex!.toInt()],
+                                            AppConstants
+                                                .moodAnimatedAssets[entry
+                                                .moodIndex!
+                                                .toInt()],
                                             width: 30,
                                             height: 30,
                                           ),
@@ -195,7 +230,10 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                                     const SizedBox(height: 12),
                                     Text(
                                       entry.title,
-                                      style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold, fontSize: 17),
+                                      style: AppTextStyles.labelLarge.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17,
+                                      ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
@@ -215,62 +253,80 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
                         },
                       ),
               ),
-  
+
               // ── Premium Glass Header & Search ────────────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 20),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: Row(
-                              children: [
-                                const Text('Journal Journey', style: AppTextStyles.headingSmall),
-                                const Spacer(),
-                                IconButton(
-                                  icon: const PhosphorIcon(PhosphorIconsRegular.pencilSimpleLine),
-                                  onPressed: () {
-                                    HapticFeedback.mediumImpact();
-                                    context.push('/journal/new');
-                                  },
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                    foregroundColor: AppColors.primary,
-                                  ),
+                child: HilwayGlass(
+                  sigmaX: 12,
+                  sigmaY: 12,
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 10,
+                      bottom: 20,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Journal Journey',
+                                style: AppTextStyles.headingSmall,
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const PhosphorIcon(
+                                  PhosphorIconsRegular.pencilSimpleLine,
                                 ),
-                              ],
-                            ),
+                                onPressed: () {
+                                  HapticFeedback.mediumImpact();
+                                  context.push('/journal/new');
+                                },
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  foregroundColor: AppColors.primary,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          // ── Search Bar ──
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: HilwayCard(
-                              isGlass: true,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                              child: TextField(
-                                onChanged: (val) => setState(() => _searchQuery = val),
-                                style: AppTextStyles.bodyMedium,
-                                decoration: InputDecoration(
-                                  hintText: 'Search reflections...',
-                                  hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
-                                  border: InputBorder.none,
-                                  icon: const PhosphorIcon(PhosphorIconsRegular.magnifyingGlass, size: 20),
+                        ),
+                        const SizedBox(height: 16),
+                        // ── Search Bar ──
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: HilwayCard(
+                            isGlass: true,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
+                            child: TextField(
+                              onChanged: (val) =>
+                                  setState(() => _searchQuery = val),
+                              style: AppTextStyles.bodyMedium,
+                              decoration: InputDecoration(
+                                hintText: 'Search reflections...',
+                                hintStyle: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textTertiary,
+                                ),
+                                border: InputBorder.none,
+                                icon: const PhosphorIcon(
+                                  PhosphorIconsRegular.magnifyingGlass,
+                                  size: 20,
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -291,7 +347,11 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
       ),
       alignment: Alignment.centerRight,
       padding: const EdgeInsets.only(right: 24),
-      child: const Icon(Icons.delete_rounded, color: AppColors.crisis, size: 28),
+      child: const Icon(
+        Icons.delete_rounded,
+        color: AppColors.crisis,
+        size: 28,
+      ),
     );
   }
 
@@ -306,14 +366,22 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
               color: AppColors.primary.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: const PhosphorIcon(PhosphorIconsRegular.bookOpenText, size: 48, color: AppColors.textTertiary),
+            child: const PhosphorIcon(
+              PhosphorIconsRegular.bookOpenText,
+              size: 48,
+              color: AppColors.textTertiary,
+            ),
           ),
           const SizedBox(height: 24),
           const Text('No reflections found', style: AppTextStyles.headingSmall),
           const SizedBox(height: 8),
           Text(
-            _searchQuery.isEmpty ? 'Start your journey by writing your first thought.' : 'Try a different search term.',
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+            _searchQuery.isEmpty
+                ? 'Start your journey by writing your first thought.'
+                : 'Try a different search term.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),

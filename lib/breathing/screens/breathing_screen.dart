@@ -10,6 +10,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../providers/breathing_provider.dart';
 import '../providers/breathing_audio_provider.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../widgets/breathing_circle.dart';
 
 class BreathingScreen extends ConsumerStatefulWidget {
@@ -206,11 +207,11 @@ class _TopBar extends StatelessWidget {
             opacity:
                 state.isRunning || state.sessionSeconds > 0 ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 400),
-            child: ClipRRect(
+            child: HilwayGlass(
               borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
+              sigmaX: 12,
+              sigmaY: 12,
+              child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
@@ -239,7 +240,6 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
           ),
         ],
       ),
@@ -450,11 +450,11 @@ class _GlassButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
+      child: HilwayGlass(
         borderRadius: BorderRadius.circular(14),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
+        sigmaX: 12,
+        sigmaY: 12,
+        child: Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
@@ -466,7 +466,6 @@ class _GlassButton extends StatelessWidget {
             child: PhosphorIcon(icon,
                 color: Colors.white.withValues(alpha: 0.8), size: 20),
           ),
-        ),
       ),
     );
   }
@@ -481,10 +480,10 @@ class _CompletionOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
+      child: HilwayGlass(
+        sigmaX: 20,
+        sigmaY: 20,
+        child: Container(
             color: Colors.black.withValues(alpha: 0.55),
             child: Center(
               child: Padding(
@@ -586,7 +585,6 @@ class _CompletionOverlay extends StatelessWidget {
               ),
             ),
           ),
-        ),
       ),
     );
   }

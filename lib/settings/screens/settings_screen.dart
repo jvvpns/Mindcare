@@ -167,7 +167,7 @@ class SettingsScreen extends ConsumerWidget {
                     child: Column(
                       children: [
                         Text(
-                          'HILWAY v1.0.0',
+                          'HILWAY v1.1.1',
                           style: AppTextStyles.labelSmall.copyWith(
                             color: AppColors.textTertiary.withValues(alpha: 0.5),
                             letterSpacing: 2.0,

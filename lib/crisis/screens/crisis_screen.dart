@@ -11,6 +11,7 @@ import '../../core/constants/philippines_schools.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../shared/widgets/hilway_background.dart';
 import '../../shared/widgets/hilway_card.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../../shared/widgets/responsive_wrapper.dart';
 
 class CrisisScreen extends ConsumerWidget {
@@ -126,10 +127,10 @@ class CrisisScreen extends ConsumerWidget {
                 top: 0,
                 left: 0,
                 right: 0,
-                child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
+                child: HilwayGlass(
+                  sigmaX: 12,
+                  sigmaY: 12,
+                  child: Container(
                       color: Colors.white.withValues(alpha: 0.1),
                       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 10),
                       child: Row(
@@ -150,7 +151,6 @@ class CrisisScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

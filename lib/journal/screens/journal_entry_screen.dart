@@ -9,6 +9,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/models/journal_entry.dart';
 import '../providers/journal_provider.dart';
 import '../../shared/widgets/hilway_background.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../../shared/widgets/hilway_card.dart';
 import '../../shared/widgets/responsive_wrapper.dart';
 
@@ -31,7 +32,9 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.entry?.title ?? '');
-    _contentController = TextEditingController(text: widget.entry?.content ?? '');
+    _contentController = TextEditingController(
+      text: widget.entry?.content ?? '',
+    );
     _selectedMoodIndex = widget.entry?.moodIndex;
     // Default to read-only if viewing an existing entry
     _isReadOnly = widget.entry != null;
@@ -56,13 +59,13 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
     }
 
     if (widget.entry == null) {
-      ref.read(journalProvider.notifier).addEntry(
-            title,
-            content,
-            moodIndex: _selectedMoodIndex,
-          );
+      ref
+          .read(journalProvider.notifier)
+          .addEntry(title, content, moodIndex: _selectedMoodIndex);
     } else {
-      ref.read(journalProvider.notifier).updateEntry(
+      ref
+          .read(journalProvider.notifier)
+          .updateEntry(
             widget.entry!,
             title,
             content,
@@ -76,12 +79,12 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
   String _getEmotionFromIndex(double? index) {
     if (index == null) return 'default';
     final idx = index.toInt();
-    if (idx == 0) return 'calm';      // Calm
-    if (idx == 1) return 'happy';     // Happy
-    if (idx == 2) return 'excited';   // Energetic
+    if (idx == 0) return 'calm'; // Calm
+    if (idx == 1) return 'happy'; // Happy
+    if (idx == 2) return 'excited'; // Energetic
     if (idx == 3) return 'concerned'; // Anxious
-    if (idx == 4) return 'sad';       // Sad
-    if (idx == 5) return 'sad';       // Depressed
+    if (idx == 4) return 'sad'; // Sad
+    if (idx == 5) return 'sad'; // Depressed
     return 'default';
   }
 
@@ -108,23 +111,29 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                         controller: _titleController,
                         readOnly: _isReadOnly,
                         textCapitalization: TextCapitalization.sentences,
-                        style: AppTextStyles.headingMedium.copyWith(fontSize: 28),
+                        style: AppTextStyles.headingMedium.copyWith(
+                          fontSize: 28,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Entry Title',
                           hintStyle: AppTextStyles.headingMedium.copyWith(
-                            color: AppColors.textTertiary.withValues(alpha: 0.4), 
-                            fontSize: 28
+                            color: AppColors.textTertiary.withValues(
+                              alpha: 0.4,
+                            ),
+                            fontSize: 28,
                           ),
                           border: InputBorder.none,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // ── Premium Mood Picker ───────────────────────────────────────
                       if (!_isReadOnly || _selectedMoodIndex != null) ...[
                         Text(
-                          _isReadOnly ? "HOW YOU WERE FEELING" : "HOW ARE YOU FEELING?", 
-                          style: AppTextStyles.labelSmall
+                          _isReadOnly
+                              ? "HOW YOU WERE FEELING"
+                              : "HOW ARE YOU FEELING?",
+                          style: AppTextStyles.labelSmall,
                         ),
                         const SizedBox(height: 12),
                         SingleChildScrollView(
@@ -135,39 +144,58 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                             children: List.generate(
                               AppConstants.moodEmojis.length,
                               (index) {
-                                final isSelected = _selectedMoodIndex == index.toDouble();
-                                
+                                final isSelected =
+                                    _selectedMoodIndex == index.toDouble();
+
                                 // In read-only mode, only show the selected mood
-                                if (_isReadOnly && !isSelected) return const SizedBox.shrink();
-  
+                                if (_isReadOnly && !isSelected)
+                                  return const SizedBox.shrink();
+
                                 return Padding(
                                   padding: const EdgeInsets.only(right: 12.0),
                                   child: GestureDetector(
-                                    onTap: _isReadOnly ? null : () {
-                                      setState(() {
-                                        _selectedMoodIndex = isSelected ? null : index.toDouble();
-                                      });
-                                    },
+                                    onTap: _isReadOnly
+                                        ? null
+                                        : () {
+                                            setState(() {
+                                              _selectedMoodIndex = isSelected
+                                                  ? null
+                                                  : index.toDouble();
+                                            });
+                                          },
                                     child: HilwayCard(
                                       isGlass: true,
                                       width: null,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                      color: isSelected ? Colors.white.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.2),
-                                      glowColor: isSelected ? AppColors.primary : Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 10,
+                                      ),
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.8)
+                                          : Colors.white.withValues(alpha: 0.2),
+                                      glowColor: isSelected
+                                          ? AppColors.primary
+                                          : Colors.transparent,
                                       child: Row(
                                         children: [
                                           Image.asset(
-                                            AppConstants.moodAnimatedAssets[index],
+                                            AppConstants
+                                                .moodAnimatedAssets[index],
                                             width: 28,
                                             height: 28,
                                           ),
                                           const SizedBox(width: 10),
                                           Text(
                                             AppConstants.moodLabels[index],
-                                            style: AppTextStyles.labelSmall.copyWith(
-                                              color: isSelected ? AppColors.primaryDark : AppColors.textPrimary,
-                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w400,
-                                            ),
+                                            style: AppTextStyles.labelSmall
+                                                .copyWith(
+                                                  color: isSelected
+                                                      ? AppColors.primaryDark
+                                                      : AppColors.textPrimary,
+                                                  fontWeight: isSelected
+                                                      ? FontWeight.w800
+                                                      : FontWeight.w400,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -180,18 +208,23 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                         ),
                         const SizedBox(height: 32),
                       ],
-                      
+
                       TextField(
                         controller: _contentController,
                         readOnly: _isReadOnly,
                         textCapitalization: TextCapitalization.sentences,
-                        style: AppTextStyles.bodyLarge.copyWith(height: 1.7, fontSize: 18),
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          height: 1.7,
+                          fontSize: 18,
+                        ),
                         maxLines: null,
                         minLines: 10,
                         decoration: InputDecoration(
                           hintText: 'Start writing your thoughts...',
                           hintStyle: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.textTertiary.withValues(alpha: 0.5)
+                            color: AppColors.textTertiary.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                           border: InputBorder.none,
                         ),
@@ -200,59 +233,67 @@ class _JournalEntryScreenState extends ConsumerState<JournalEntryScreen> {
                   ),
                 ),
               ),
-  
+
               // ── Premium Glass Header ─────────────────────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10, bottom: 10),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const PhosphorIcon(PhosphorIconsRegular.x),
-                            onPressed: () => context.pop(),
-                          ),
-                          Text(
-                            widget.entry == null 
-                              ? 'New Reflection' 
-                              : (_isReadOnly ? 'Reflection' : 'Edit Reflection'), 
-                            style: AppTextStyles.headingSmall
-                          ),
-                          const Spacer(),
-                          if (_isReadOnly)
-                            TextButton.icon(
-                              onPressed: () => setState(() => _isReadOnly = false),
-                              icon: const PhosphorIcon(PhosphorIconsRegular.pencilSimpleLine, size: 18),
-                              label: Text(
-                                'EDIT',
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color: AppColors.primary, 
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            )
-                          else
-                            TextButton(
-                              onPressed: _saveEntry,
-                              child: Text(
-                                'SAVE',
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color: AppColors.primary, 
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
-                                ),
+                child: HilwayGlass(
+                  sigmaX: 12,
+                  sigmaY: 12,
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 10,
+                      bottom: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const PhosphorIcon(PhosphorIconsRegular.x),
+                          onPressed: () => context.pop(),
+                        ),
+                        Text(
+                          widget.entry == null
+                              ? 'New Reflection'
+                              : (_isReadOnly
+                                    ? 'Reflection'
+                                    : 'Edit Reflection'),
+                          style: AppTextStyles.headingSmall,
+                        ),
+                        const Spacer(),
+                        if (_isReadOnly)
+                          TextButton.icon(
+                            onPressed: () =>
+                                setState(() => _isReadOnly = false),
+                            icon: const PhosphorIcon(
+                              PhosphorIconsRegular.pencilSimpleLine,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'EDIT',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
                               ),
                             ),
-                          const SizedBox(width: 8),
-                        ],
-                      ),
+                          )
+                        else
+                          TextButton(
+                            onPressed: _saveEntry,
+                            child: Text(
+                              'SAVE',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                      ],
                     ),
                   ),
                 ),

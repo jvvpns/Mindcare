@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../providers/chat_tutorial_provider.dart';
 
 class ChatTutorialOverlay extends ConsumerWidget {
@@ -18,8 +19,9 @@ class ChatTutorialOverlay extends ConsumerWidget {
         onTap: () {},
         child: Container(
           color: AppColors.background.withValues(alpha: 0.85),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: HilwayGlass(
+            sigmaX: 5,
+            sigmaY: 5,
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),

@@ -7,6 +7,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/router/app_router.dart';
 import '../../core/models/mood_log.dart';
@@ -227,10 +228,10 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                 Column(
                   children: [
                   // ── Header: Glassmorphic Bar ──────────────────────────────
-                  ClipRRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
+                  HilwayGlass(
+                    sigmaX: 16,
+                    sigmaY: 16,
+                    child: Container(
                         color: Colors.white.withValues(alpha: 0.92),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -319,7 +320,6 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                           ),
                         ),
                       ),
-                    ),
                   ),
   
                   // ── Chat List Area: Now maximizes usable space ──────────────────

@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/device_utils.dart';
+import 'hilway_glass.dart';
 
 /// A premium card widget with optional glassmorphism and micro-animation.
 ///
@@ -108,7 +110,7 @@ class _HilwayCardState extends State<HilwayCard>
         boxShadow: [
           BoxShadow(
             color: (widget.glowColor ?? Colors.black).withValues(alpha: widget.glowColor != null ? 0.12 : 0.04),
-            blurRadius: widget.glowColor != null ? 24 : 20,
+            blurRadius: DeviceUtils.isMobileWeb ? (widget.glowColor != null ? 12 : 8) : (widget.glowColor != null ? 24 : 20),
             offset: const Offset(0, 6),
           ),
         ],
@@ -118,11 +120,11 @@ class _HilwayCardState extends State<HilwayCard>
   }
 
   Widget _buildGlass() {
-    return ClipRRect(
+    return HilwayGlass(
       borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
+      sigmaX: 12,
+      sigmaY: 12,
+      child: Container(
           width: widget.width,
           padding: widget.padding,
           margin: widget.margin,
@@ -143,14 +145,13 @@ class _HilwayCardState extends State<HilwayCard>
             boxShadow: [
               BoxShadow(
                 color: (widget.glowColor ?? Colors.black).withValues(alpha: widget.glowColor != null ? 0.18 : 0.06),
-                blurRadius: widget.glowColor != null ? 36 : 24,
+                blurRadius: DeviceUtils.isMobileWeb ? (widget.glowColor != null ? 16 : 8) : (widget.glowColor != null ? 36 : 24),
                 offset: const Offset(0, 10),
               ),
             ],
           ),
           child: widget.child,
         ),
-      ),
     );
   }
 }

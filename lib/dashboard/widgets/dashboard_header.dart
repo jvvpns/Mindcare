@@ -4,9 +4,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
+import '../../core/utils/device_utils.dart';
+import '../../shared/widgets/hilway_glass.dart';
 import '../../core/models/mood_log.dart';
 import '../../core/models/planner_entry.dart';
 import '../../clinical_duty/models/shift_task.dart';
@@ -44,10 +47,13 @@ class DashboardHeader extends ConsumerWidget {
 
   String _capitalize(String text) {
     if (text.isEmpty) return text;
-    return text.split(' ').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   // Logic moved to KellyInsightProvider for performance
@@ -58,13 +64,17 @@ class DashboardHeader extends ConsumerWidget {
       case 'energetic':
         return AppColors.emotionToColors['happy']![0].withValues(alpha: 0.85);
       case 'happy':
-        return AppColors.emotionToColors['concerned']![0].withValues(alpha: 0.85);
+        return AppColors.emotionToColors['concerned']![0].withValues(
+          alpha: 0.85,
+        );
       case 'calm':
         return AppColors.emotionToColors['sad']![0].withValues(alpha: 0.85);
       case 'sad':
         return AppColors.emotionToColors['calm']![0].withValues(alpha: 0.85);
       case 'excited':
-        return AppColors.emotionToColors['surprised']![0].withValues(alpha: 0.85);
+        return AppColors.emotionToColors['surprised']![0].withValues(
+          alpha: 0.85,
+        );
       case 'concerned':
         return AppColors.emotionToColors['happy']![0].withValues(alpha: 0.85);
       case 'surprised':
@@ -80,13 +90,17 @@ class DashboardHeader extends ConsumerWidget {
       case 'energetic':
         return AppColors.emotionToColors['happy']![1].withValues(alpha: 0.4);
       case 'happy':
-        return AppColors.emotionToColors['concerned']![1].withValues(alpha: 0.4);
+        return AppColors.emotionToColors['concerned']![1].withValues(
+          alpha: 0.4,
+        );
       case 'calm':
         return AppColors.emotionToColors['sad']![1].withValues(alpha: 0.4);
       case 'sad':
         return AppColors.emotionToColors['calm']![1].withValues(alpha: 0.4);
       case 'excited':
-        return AppColors.emotionToColors['surprised']![1].withValues(alpha: 0.4);
+        return AppColors.emotionToColors['surprised']![1].withValues(
+          alpha: 0.4,
+        );
       case 'concerned':
         return AppColors.emotionToColors['happy']![1].withValues(alpha: 0.4);
       case 'surprised':
@@ -103,7 +117,7 @@ class DashboardHeader extends ConsumerWidget {
     final pokedMessage = ref.watch(kellyPokedMessageProvider);
     final insightMessage = ref.watch(kellyInsightProvider);
     final syncStatus = ref.watch(syncStatusProvider).value ?? SyncUIState.idle;
-    
+
     final message = pokedMessage ?? insightMessage;
     final isDesktop = MediaQuery.of(context).size.width > 900;
 
@@ -116,11 +130,16 @@ class DashboardHeader extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -163,15 +182,28 @@ class DashboardHeader extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_greeting(), style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                  Text(
+                    _greeting(),
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     _capitalize(userName),
                     style: AppTextStyles.displayMedium.copyWith(
                       foreground: Paint()
-                        ..shader = const LinearGradient(
-                          colors: [Color(0xFF4FC3F7), Color(0xFF4DB6AC), Color(0xFF9575CD)],
-                        ).createShader(const Rect.fromLTWH(0.0, 0.0, 220.0, 70.0)),
+                        ..shader =
+                            const LinearGradient(
+                              colors: [
+                                Color(0xFF4FC3F7),
+                                Color(0xFF4DB6AC),
+                                Color(0xFF9575CD),
+                              ],
+                            ).createShader(
+                              const Rect.fromLTWH(0.0, 0.0, 220.0, 70.0),
+                            ),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -179,25 +211,44 @@ class DashboardHeader extends ConsumerWidget {
                 ],
               ),
             ),
-              Row(
+            Row(
               children: [
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    StreakDetailsSheet.show(context, streakCount, weeklyActivity);
+                    StreakDetailsSheet.show(
+                      context,
+                      streakCount,
+                      weeklyActivity,
+                    );
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const PhosphorIcon(PhosphorIconsFill.plant, color: AppColors.success, size: 18),
+                        const PhosphorIcon(
+                          PhosphorIconsFill.plant,
+                          color: AppColors.success,
+                          size: 18,
+                        ),
                         const SizedBox(width: 6),
-                        Text('$streakCount', style: AppTextStyles.labelMedium.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
+                        Text(
+                          '$streakCount',
+                          style: AppTextStyles.labelMedium.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -205,7 +256,10 @@ class DashboardHeader extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
                   child: _buildSyncIcon(syncStatus),
                 ),
                 const SizedBox(width: 8),
@@ -217,16 +271,18 @@ class DashboardHeader extends ConsumerWidget {
         const SizedBox(height: 24),
         if (!isDesktop) // Only show the full card on Mobile/Tablet
           GestureDetector(
-          onTap: () => ref.read(kellyPokedMessageProvider.notifier).poke(),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            onTap: () => ref.read(kellyPokedMessageProvider.notifier).poke(),
+            child: HilwayGlass(
+              borderRadius: BorderRadius.circular(24),
+              sigmaX: 8,
+              sigmaY: 8,
               child: Builder(
                 builder: (context) {
                   final bgColor = _getKellyCardColor(effectiveEmotion);
-                  final borderColor = _getKellyCardBorderColor(effectiveEmotion);
-                  
+                  final borderColor = _getKellyCardBorderColor(
+                    effectiveEmotion,
+                  );
+
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -236,7 +292,7 @@ class DashboardHeader extends ConsumerWidget {
                       boxShadow: [
                         BoxShadow(
                           color: borderColor.withValues(alpha: 0.15),
-                          blurRadius: 16,
+                          blurRadius: DeviceUtils.isMobileWeb ? 8 : 16,
                           spreadRadius: 2,
                           offset: const Offset(0, 4),
                         ),
@@ -251,7 +307,10 @@ class DashboardHeader extends ConsumerWidget {
                             width: 60,
                             height: 60,
                             child: Center(
-                              child: KellyMiniOrb(emotion: effectiveEmotion, size: 54),
+                              child: KellyMiniOrb(
+                                emotion: effectiveEmotion,
+                                size: 54,
+                              ),
                             ),
                           ),
                         ),
@@ -275,7 +334,7 @@ class DashboardHeader extends ConsumerWidget {
                                   Icon(
                                     Icons.auto_awesome,
                                     size: 14,
-                                    color: AppColors.primary, 
+                                    color: AppColors.primary,
                                   ),
                                 ],
                               ),
@@ -283,7 +342,9 @@ class DashboardHeader extends ConsumerWidget {
                               Text(
                                 message,
                                 style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textPrimary.withValues(alpha: 0.9),
+                                  color: AppColors.textPrimary.withValues(
+                                    alpha: 0.9,
+                                  ),
                                   height: 1.5,
                                 ),
                               ),
@@ -293,11 +354,11 @@ class DashboardHeader extends ConsumerWidget {
                       ],
                     ),
                   );
-                }
+                },
               ),
             ),
-          ),
-        ) else // On Desktop, show a compact "Clinical Pulse" bar instead
+          )
+        else // On Desktop, show a compact "Clinical Pulse" bar instead
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -307,12 +368,18 @@ class DashboardHeader extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(PhosphorIconsFill.lightning, color: AppColors.primary, size: 20),
+                const Icon(
+                  PhosphorIconsFill.lightning,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     message,
-                    style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -330,14 +397,29 @@ class DashboardHeader extends ConsumerWidget {
         return const SizedBox(
           width: 20,
           height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.primary)),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(AppColors.primary),
+          ),
         );
       case SyncUIState.pending:
-        return const PhosphorIcon(PhosphorIconsRegular.cloudArrowUp, color: AppColors.textTertiary, size: 20);
+        return const PhosphorIcon(
+          PhosphorIconsRegular.cloudArrowUp,
+          color: AppColors.textTertiary,
+          size: 20,
+        );
       case SyncUIState.error:
-        return const PhosphorIcon(PhosphorIconsFill.cloudWarning, color: AppColors.crisis, size: 20);
+        return const PhosphorIcon(
+          PhosphorIconsFill.cloudWarning,
+          color: AppColors.crisis,
+          size: 20,
+        );
       case SyncUIState.idle:
-        return const PhosphorIcon(PhosphorIconsRegular.cloudCheck, color: AppColors.success, size: 20);
+        return const PhosphorIcon(
+          PhosphorIconsRegular.cloudCheck,
+          color: AppColors.success,
+          size: 20,
+        );
     }
   }
 }
@@ -361,8 +443,15 @@ class _NotificationBell extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(color: AppColors.surface, shape: BoxShape.circle),
-            child: const PhosphorIcon(PhosphorIconsRegular.bell, color: AppColors.textPrimary, size: 20),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+            ),
+            child: const PhosphorIcon(
+              PhosphorIconsRegular.bell,
+              color: AppColors.textPrimary,
+              size: 20,
+            ),
           ),
           if (unreadCount > 0)
             Positioned(
@@ -374,10 +463,7 @@ class _NotificationBell extends StatelessWidget {
                   color: AppColors.crisis,
                   shape: BoxShape.circle,
                 ),
-                constraints: const BoxConstraints(
-                  minWidth: 16,
-                  minHeight: 16,
-                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                 child: Center(
                   child: Text(
                     unreadCount > 9 ? '9+' : '$unreadCount',
