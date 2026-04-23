@@ -11,6 +11,7 @@ import '../../core/services/kelly_emotion_service.dart';
 import 'kelly_state_provider.dart';
 import 'chat_safety_provider.dart';
 import 'chat_session_provider.dart';
+import 'usage_provider.dart';
 import '../../planner/providers/planner_provider.dart';
 import 'dart:async';
 
@@ -139,7 +140,18 @@ class ChatMessagesNotifier extends StateNotifier<List<ChatMessage>> {
 
 
   Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
+    final cleanText = text.trim();
+    if (cleanText.isEmpty) return;
+
+    // ── Safety Guard: Prevent multiple messages while processing ──────────
+    if (_ref.read(chatLoadingProvider)) return;
+
+    // ── Energy Guard: Kelly needs stamina to reply ────────────────────────
+    final canSend = _ref.read(usageProvider.notifier).incrementUsage();
+    if (!canSend) {
+      debugPrint("ChatFlow: Kelly out of energy.");
+      return;
+    }
 
     final emotion = KellyEmotionService.detectEmotion(text);
     _ref.read(kellyEmotionProvider.notifier).state = emotion;

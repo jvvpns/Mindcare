@@ -67,6 +67,19 @@ class _MoodBottomSheetState extends ConsumerState<MoodBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
+    String title;
+    final slot = getCurrentMoodSlot();
+    switch (slot) {
+      case MoodSlot.morning:
+        title = "Morning Check-in";
+        break;
+      case MoodSlot.evening:
+        title = "Evening Reflection";
+        break;
+      default:
+        title = "How are you feeling?";
+    }
 
     return Container(
       padding: EdgeInsets.only(
@@ -97,8 +110,8 @@ class _MoodBottomSheetState extends ConsumerState<MoodBottomSheet> {
             ),
             const SizedBox(height: 24),
 
-            const Text(
-              "How are you feeling?",
+            Text(
+              title,
               style: AppTextStyles.headingSmall,
               textAlign: TextAlign.center,
             ),

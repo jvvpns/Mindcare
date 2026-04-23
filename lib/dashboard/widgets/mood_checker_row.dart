@@ -13,6 +13,23 @@ class MoodCheckerRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final todayLog = ref.watch(todayMoodProvider);
+    final slot = getCurrentMoodSlot();
+
+    String title;
+    if (todayLog != null) {
+      title = "You're feeling ${todayLog.moodLabel}";
+    } else {
+      switch (slot) {
+        case MoodSlot.morning:
+          title = "Morning Check-in: Ready for today?";
+          break;
+        case MoodSlot.evening:
+          title = "Evening Reflection: How was your day?";
+          break;
+        default:
+          title = "How are you feeling right now?";
+      }
+    }
 
     return HilwayCard(
       isGlass: true,
@@ -21,7 +38,7 @@ class MoodCheckerRow extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            todayLog == null ? "How are you feeling today?" : "You're feeling ${todayLog.moodLabel}",
+            title,
             style: AppTextStyles.headingSmall,
           ),
           const SizedBox(height: 16),

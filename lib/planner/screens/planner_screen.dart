@@ -44,9 +44,17 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
              t.dueDate.day == _selectedDay!.day;
     }).toList();
 
-    // Filter overdue tasks but exclude those already visible in the selected day's pending list to prevent duplicate widget keys
+    // Filter overdue tasks: include pending overdue AND completed overdue from last 7 days
     final overdue = tasks.where((t) {
-      if (!t.isOverdue || t.isCompleted) return false;
+      if (!t.dueDate.isBefore(DateTime.now().subtract(const Duration(hours: 1)))) return false;
+      
+      // If completed, only show if completed within the last 7 days (clipping infinite growth)
+      if (t.isCompleted) {
+        final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+        if (t.dueDate.isBefore(sevenDaysAgo)) return false;
+      }
+
+      // Exclude those already visible in the selected day's pending list to prevent duplicate widget keys
       if (_selectedDay != null && 
           t.dueDate.year == _selectedDay!.year &&
           t.dueDate.month == _selectedDay!.month &&
@@ -324,7 +332,16 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _AddTaskSheet(ref: ref, initialDate: selectedDay),
+      builder: (_) => _TaskFormSheet(ref: ref, initialDate: selectedDay),
+    );
+  }
+
+  void _showEditTaskSheet(BuildContext context, WidgetRef ref, PlannerEntry task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TaskFormSheet(ref: ref, existingEntry: task),
     );
   }
 }
@@ -471,6 +488,24 @@ class _TaskTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  
+                  // Edit Button (Restricted for Overdue)
+                  if (!task.dueDate.isBefore(DateTime.now()))
+                    IconButton(
+                      icon: PhosphorIcon(PhosphorIconsRegular.pencilSimple, size: 18, color: AppColors.primary.withValues(alpha: 0.6)),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        // Accessing the parent state's showEdit method via context/ref if possible
+                        // But since _TaskTile is inside PlannerScreen, we can just trigger it if we pass the callback
+                        // For simplicity in this local private widget, we'll use a hack or just define the method here
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => _TaskFormSheet(ref: ref, existingEntry: task),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -571,23 +606,26 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Add Task Bottom Sheet ──────────────────────────────────────────────────
-class _AddTaskSheet extends ConsumerStatefulWidget {
+// ── Task Form Bottom Sheet (Add/Edit) ──────────────────────────────────────
+class _TaskFormSheet extends ConsumerStatefulWidget {
   final WidgetRef ref;
   final DateTime? initialDate;
-  const _AddTaskSheet({required this.ref, this.initialDate});
+  final PlannerEntry? existingEntry;
+  const _TaskFormSheet({required this.ref, this.initialDate, this.existingEntry});
 
   @override
-  ConsumerState<_AddTaskSheet> createState() => _AddTaskSheetState();
+  ConsumerState<_TaskFormSheet> createState() => _TaskFormSheetState();
 }
 
-class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
+class _TaskFormSheetState extends ConsumerState<_TaskFormSheet> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   String _category = 'todo';
   late DateTime _dueDate;
   DateTime? _endTime;
   int? _reminderOffset; 
+  
+  bool get isEdit => widget.existingEntry != null;
 
   static const _categoryMap = {
     'clinical_duty': 'Clinical',
@@ -607,10 +645,20 @@ class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
-    _dueDate = widget.initialDate != null 
-        ? DateTime(widget.initialDate!.year, widget.initialDate!.month, widget.initialDate!.day, now.hour + 1, 0)
-        : DateTime.now().add(const Duration(hours: 1));
+    if (isEdit) {
+      final entry = widget.existingEntry!;
+      _titleCtrl.text = entry.title;
+      _descCtrl.text = entry.description ?? '';
+      _category = entry.category;
+      _dueDate = entry.dueDate;
+      _endTime = entry.endTime;
+      _reminderOffset = entry.reminderOffset;
+    } else {
+      final now = DateTime.now();
+      _dueDate = widget.initialDate != null 
+          ? DateTime(widget.initialDate!.year, widget.initialDate!.month, widget.initialDate!.day, now.hour + 1, 0)
+          : DateTime.now().add(const Duration(hours: 1));
+    }
   }
 
   @override
@@ -658,7 +706,7 @@ class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
                 ),
                 const SizedBox(height: 20),
 
-                const Text('New Task', style: AppTextStyles.headingMedium),
+                Text(isEdit ? 'Edit Task' : 'New Task', style: AppTextStyles.headingMedium),
                 const SizedBox(height: 20),
 
                 // Title
@@ -846,7 +894,7 @@ class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text('Save Task',
+                    child: Text(isEdit ? 'Update Task' : 'Save Task',
                         style: AppTextStyles.buttonLarge.copyWith(color: Colors.white)),
                   ),
                 ),
@@ -890,14 +938,27 @@ class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
   void _save() {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) return;
-    ref.read(plannerProvider.notifier).addTask(
-      title: title,
-      category: _category,
-      dueDate: _dueDate,
-      endTime: _endTime,
-      reminderOffset: _reminderOffset,
-      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-    );
+    
+    if (isEdit) {
+      ref.read(plannerProvider.notifier).editTask(
+        id: widget.existingEntry!.id,
+        title: title,
+        category: _category,
+        dueDate: _dueDate,
+        endTime: _endTime,
+        reminderOffset: _reminderOffset,
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      );
+    } else {
+      ref.read(plannerProvider.notifier).addTask(
+        title: title,
+        category: _category,
+        dueDate: _dueDate,
+        endTime: _endTime,
+        reminderOffset: _reminderOffset,
+        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      );
+    }
     Navigator.of(context).pop();
   }
 }

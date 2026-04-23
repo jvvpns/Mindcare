@@ -30,26 +30,27 @@ class UsageNotifier extends StateNotifier<UsageState> {
     _init();
   }
 
+  static const _cooldownHours = 4;
+
   void _init() {
     final settings = HiveService.settingsBox;
     final lastResetStr = settings.get(AppConstants.keyLastUsageReset) as String?;
     final count = settings.get(AppConstants.keyDailyUsageCount, defaultValue: 0) as int;
 
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
 
     if (lastResetStr == null) {
       // First time use
-      _reset(today);
+      _reset(now);
     } else {
       final lastResetDate = DateTime.parse(lastResetStr);
-      final lastResetDay = DateTime(lastResetDate.year, lastResetDate.month, lastResetDate.day);
+      final hoursSince = now.difference(lastResetDate).inHours;
 
-      if (today.isAfter(lastResetDay)) {
-        // New day! Reset
-        _reset(today);
+      if (hoursSince >= _cooldownHours) {
+        // 4 hours have passed — reset
+        _reset(now);
       } else {
-        // Same day, load remaining
+        // Still within cooldown window, load remaining
         state = UsageState(
           messagesRemaining: AppConstants.maxDailyMessages - count,
           lastReset: lastResetDate,

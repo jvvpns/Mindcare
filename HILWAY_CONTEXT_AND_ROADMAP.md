@@ -9,7 +9,8 @@
 
 - **Aesthetic standard ("Soft Premium")**: The UI relies on glassmorphism (blurred overlays via `BackdropFilter`), high border radii (`20px` to `24px`), soft shadows, and muted pastel colors.
 - **Living Background System**: The application uses a reactive `HilwayBackground` widget featuring drift-animated gradients and touch-reactive orbs to maintain a "meditative" brand identity.
-- **Privacy Core**: All personal health data and AI context (moods, assessments, journal summaries) reside **locally** in encrypted Hive boxes. Kelly (the AI) has access to this data via system prompt injection but the data never leaves the device's persistent storage except for the active chat session context.
+- **Privacy Core**: All personal health data and AI context (moods, assessments, journal summaries) reside **locally** in encrypted Hive boxes.
+- **Cloud Synchronization**: Uses a senior-grade `SyncService` for offline-first synchronization with **Supabase**. Data is queued locally and synced with exponential backoff.
 - **Rule**: NEVER hardcode colors or fonts. ALWAYS use `AppColors` and `AppTextStyles` from `lib/core/constants/`.
 
 ---
@@ -19,10 +20,13 @@
 - **State Management**: `flutter_riverpod`. We use `StateNotifierProvider` for logic and `StateProvider` for UI-local states.
 - **Storage**: `hive_flutter`.
   - 🚨 **CRITICAL RULE**: We **DO NOT USE `build_runner`**. All Hive TypeAdapters (`.g.dart` files) must be maintained **MANUALLY**.
+- **Backend & Sync**: `supabase_flutter`. Managed via `SyncService` for reliable offline-to-online transitions.
 - **AI / ML**: 
   - `google_generative_ai` (Gemini 1.5 Flash) powers Kelly.
-  - `tflite_flutter` (running `burnout_model.tflite`) powers on-device burnout prediction.
-- **Notifications**: `flutter_local_notifications` + `timezone` for offline-first clinical reminders.
+  - `IntelligenceService`: Gateway to backend-hosted ML models (Render) for advanced burnout prediction.
+- **Integrations**: 
+  - `health` package for Apple Health/Health Connect (Sleep & Mindfulness).
+  - `flutter_local_notifications` for offline clinical reminders.
 - **Routing**: `go_router`.
 
 ---
@@ -31,17 +35,18 @@
 
 ### ✅ Completed & Analyzed
 - **Kelly Chatbot**: Multi-session support, sentiment detection, and premium Hero-animated glassmorphic UI.
-- **Burnout Assessment**: Local ML inference model integration for risk levels (Low/Medium/High).
-- **Academic Planner (Phase 7)**: **[ADVANCED]** Hybrid Weekly/Monthly calendar with dot activity indicators. Supports Clinical Duty time-blocking and 100% offline persistence.
-- **Hero Dashboard (Phase 7.5)**: **[CLINICAL BENTO]** Reorganized vitals-first layout using expanded Bento-Box grid for rapid clinical duty oversight.
-- **Crisis Intervention**: Dedicated UI with localized Roxas City hotlines (KaEstorya) and premium glassmorphic cards with emergency glows.
-- **Mindful Breathing**: Animated gradients and 4-4-4 rhythm glassmorphic tool.
-- **AI Resilience Pulse**: predictive, TFLite-powered gauge using `CustomPainter`.
-- **Living Background & Glass**: High-performance `CustomPaint` mesh background with refined `HilwayCard` frosting and ambient glow system.
+- **Burnout Engine**: Integrated with backend ML and local feature extraction (Sleep, Mood, Meal skips).
+- **Academic Planner**: Hybrid Weekly/Monthly calendar with dot activity indicators and 100% offline persistence.
+- **Clinical Bento Dashboard**: Vitally-focused layout with "Refuel" (Meal) tracking, "Sleep" pulse, and "Mood" journey logs.
+- **Shift Buddy (Phase 8)**: Nursing-specific clinical duty checklist with category templates (Meds, Handover, Routine).
+- **Sync Engine**: State-machine based sync with idempotency and background recovery.
+- **Health Integration**: Automated sleep duration fetching and mindfulness session logging.
+- **Crisis Intervention**: Dedicated UI with localized Roxas City hotlines (KaEstorya) and institutional branding.
+- **Mindful Breathing**: Animated gradients and 4-4-4 rhythm tool integrated with HealthKit.
 
 ### 🚧 Current Sprint: Mascots & Memory
-- **Rive Mascot**: Replacing SVG emotions with fluid Rive animations for Kelly to heighten empathy.
-- **Long-term Memory**: Implementing a local retrieval-augmented generation (RAG) light pattern to allow Kelly to remember student preferences across weeks.
+- **Rive Mascot**: Replacing CustomPaint `KellyOrbMascot` with fluid Rive animations to heighten empathy.
+- **Long-term Memory**: Implementing a local retrieval-augmented generation (RAG) light pattern for Kelly.
 
 ---
 
@@ -54,20 +59,21 @@ The app specifically supports the following institutions, storing affiliated hos
 
 ---
 
-## 5. Future Roadmap (Phase 8+)
-- **Clinical Duty Tool**: Nursing-specific shift checklist templates (Medication rounds, IVF monitoring).
-- **Peer Support (Optional)**: Highly restricted, anonymous local peer venting forum.
-- **Haptic Integration**: Adding professional-grade vibration feedback for all clinical interactions.
+## 5. Future Roadmap (Phase 9+)
+- **Referral Directory**: Functional directory for local mental health professionals and clinics.
+- **Peer Support (Optional)**: Anonymous local peer venting forum with high moderation.
+- **Haptic Integration**: Professional-grade vibration feedback for clinical interactions.
+- **AI Resilience Pulse**: Real-time TFLite-powered gauge using `CustomPainter` (Local inference fallback).
 
 ---
 
 ## 6. Technical Stability Rules
-1. **Navigation**: ALWAYS use `context.go()` for switching between main app modules (Planner, Mood, Dashboard) to prevent GoRouter duplicate key crashes.
-2. **Readability**: Ensure text has high contrast (using `primaryDark` or solid backgrounds) when placed over the animated mesh background.
-3. **Hero Tags**: Maintain the `kelly_orb_hero` tag for smooth transitions between the shell and chatbot.
+1. **Navigation**: ALWAYS use `context.go()` for switching between main app modules to prevent GoRouter duplicate key crashes.
+2. **Readability**: Ensure high contrast over the animated mesh background.
+3. **Durable Sync**: When modifying a model, ensure its `toMap()` and `fromMap()` are updated for Supabase compatibility.
 
 ---
 
 ## 7. Next Steps for Developer
-1. **Rive Integration**: Setup `rive` package and import Kelly mascot assets.
-2. **Shift Checklist**: Start the implementation of the Clinical Duty templates.
+1. **Referral Directory**: Implement the UI and data source for the local professional directory.
+2. **Rive Mascot**: Finalize Rive state machine integration in `lib/chatbot/widgets/`.

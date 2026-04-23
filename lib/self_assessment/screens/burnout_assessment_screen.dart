@@ -18,8 +18,9 @@ class BurnoutAssessmentScreen extends ConsumerWidget {
     final evaluationState = ref.watch(assessmentStateProvider);
     final cooldown = ref.watch(burnoutCooldownProvider).value ?? Duration.zero;
 
-    // Safety redirect if in cooldown
-    if (cooldown > Duration.zero) {
+    // Safety redirect if in cooldown — but only if we AREN'T currently seeing a result
+    // or actively loading one. This prevents the "kick-out" bug during save.
+    if (cooldown > Duration.zero && !evaluationState.hasValue && !evaluationState.isLoading) {
       Future.microtask(() {
         if (context.mounted) {
           if (context.canPop()) {

@@ -92,7 +92,7 @@ class SyncService {
     processQueue();
   }
 
-  /// Processes the queue with a state machine.
+  /// Processes the queue with a state machine and batching optimization.
   Future<void> processQueue() async {
     if (_isProcessing || _queueBox.isEmpty) return;
     
@@ -107,23 +107,82 @@ class SyncService {
           .where((j) => j.state == SyncState.pending || j.state == SyncState.retrying)
           .toList();
 
+      if (jobs.isEmpty) return;
+
       // Sort by creation time to preserve causal order
       jobs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+      // Separate Batchable Upserts from individual Deletes
+      final upsertGroups = <String, List<SyncJob>>{};
+      final individualJobs = <SyncJob>[];
 
       for (final job in jobs) {
         // Check backoff if retrying
         if (job.state == SyncState.retrying && !_shouldRetry(job)) continue;
 
+        if (job.action == 'upsert') {
+          upsertGroups.putIfAbsent(job.table, () => []).add(job);
+        } else {
+          individualJobs.add(job);
+        }
+      }
+
+      // 1. Process Batch Upserts (High Efficiency)
+      for (final table in upsertGroups.keys) {
+        await _syncBatch(table, upsertGroups[table]!);
+      }
+
+      // 2. Process Individual Actions (e.g., Deletes)
+      for (final job in individualJobs) {
         await _syncJob(job);
       }
+      
     } finally {
       _isProcessing = false;
       
-      // Schedule next check if there are still jobs in the box.
-      // We check if box is not empty to ensure we eventually process everything.
       if (_queueBox.isNotEmpty) {
         _retryTimer = Timer(const Duration(seconds: 30), processQueue);
       }
+    }
+  }
+
+  Future<void> _syncBatch(String table, List<SyncJob> jobs) async {
+    if (jobs.isEmpty) return;
+
+    // Mark all as syncing
+    for (final job in jobs) {
+      job.state = SyncState.syncing;
+      job.lastAttempt = DateTime.now();
+      await job.save();
+    }
+
+    try {
+      // Extract payloads
+      final payloads = jobs.map((j) => j.payload).toList();
+
+      await SupabaseService.client
+          .from(table)
+          .upsert(payloads)
+          .timeout(const Duration(seconds: 30));
+
+      // Success: Remove all from queue
+      for (final job in jobs) {
+        await _queueBox.delete(job.id);
+      }
+      debugPrint('SyncService: Successfully batched ${jobs.length} items to $table');
+
+    } catch (e) {
+      // Failure: Revert to retrying state individually
+      for (final job in jobs) {
+        if (e is PostgrestException && (e.code?.startsWith('22') ?? false)) {
+          job.state = SyncState.failed;
+        } else {
+          job.state = SyncState.retrying;
+          job.retryCount++;
+        }
+        await job.save();
+      }
+      debugPrint('SyncService: Batch failed for $table: $e');
     }
   }
 
@@ -138,25 +197,14 @@ class SyncService {
   }
 
   Future<void> _syncJob(SyncJob job) async {
-    if (!job.isInBox) {
-      // This job was overwritten by a newer edit before we could sync it.
-      // Safely ignore it, the newer edit will be picked up in the next loop.
-      return;
-    }
+    if (!job.isInBox) return;
 
     job.state = SyncState.syncing;
     job.lastAttempt = DateTime.now();
     await job.save();
 
     try {
-      if (job.action == 'upsert') {
-        // Latest Timestamp Wins is handled by Postgres/Supabase upsert by default 
-        // if IDs match. To be safer, we could add a RPC that checks timestamps.
-        await SupabaseService.client
-            .from(job.table)
-            .upsert(job.payload)
-            .timeout(const Duration(seconds: 15));
-      } else if (job.action == 'delete') {
+      if (job.action == 'delete') {
         await SupabaseService.client
             .from(job.table)
             .delete()
@@ -164,20 +212,15 @@ class SyncService {
             .timeout(const Duration(seconds: 15));
       }
 
-      // Success Path
       await _queueBox.delete(job.id);
-      debugPrint('SyncService: Successfully synced ${job.id}');
+      debugPrint('SyncService: Successfully synced individual job ${job.id}');
       
     } catch (e) {
       if (e is PostgrestException && (e.code?.startsWith('22') ?? false)) {
-        // Data error (Permanent)
         job.state = SyncState.failed;
-        debugPrint('SyncService: Permanent failure for ${job.id}: ${e.message}');
       } else {
-        // Network/Server error (Retryable)
         job.state = SyncState.retrying;
         job.retryCount++;
-        debugPrint('SyncService: Retryable failure for ${job.id} (Attempt ${job.retryCount})');
       }
       await job.save();
     }

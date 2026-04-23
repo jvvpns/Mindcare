@@ -56,6 +56,7 @@ class AppConstants {
   // ── Hive Keys ─────────────────────────────────────────────────────────────
   static const String keyHasSeenOnboarding     = 'has_seen_onboarding';
   static const String keyHasSeenChatTutorial   = 'has_seen_chat_tutorial';
+  static const String keyHasEnabledNotifications = 'has_enabled_notifications';
   static const String keyDailyUsageCount       = 'daily_usage_count';
   static const String keyLastUsageReset        = 'last_usage_reset';
 

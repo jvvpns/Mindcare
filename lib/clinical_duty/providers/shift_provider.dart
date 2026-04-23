@@ -12,10 +12,31 @@ class ShiftNotifier extends StateNotifier<List<ShiftTask>> {
     _init();
   }
 
-  void _init() {
+  Future<void> _init() async {
+    await _checkMidnightReset();
     _loadTasks();
     // Watch for external changes
     HiveService.shiftBox.watch().listen((_) => _loadTasks());
+  }
+
+  Future<void> _checkMidnightReset() async {
+    const resetKey = 'last_shift_reset_date';
+    final now = DateTime.now();
+    final todayStr = "${now.year}-${now.month}-${now.day}";
+    
+    final lastReset = HiveService.settingsBox.get(resetKey, defaultValue: '') as String;
+    
+    if (lastReset != todayStr) {
+      // It's a new day! Reset all tasks
+      final box = HiveService.shiftBox;
+      for (var task in box.values) {
+        if (task.isDone) {
+          task.isDone = false;
+          await task.save();
+        }
+      }
+      await HiveService.settingsBox.put(resetKey, todayStr);
+    }
   }
 
   void _loadTasks() {

@@ -8,7 +8,18 @@ import '../../auth/providers/auth_provider.dart';
 import '../../journal/providers/journal_provider.dart';
 import '../../core/services/sync_service.dart';
 
-// Provider that holds today's MoodLog if it exists
+enum MoodSlot { morning, evening, none }
+
+MoodSlot getCurrentMoodSlot() {
+  final hour = DateTime.now().hour;
+  // Morning: 5 AM to 12 PM (Prep for shift/classes)
+  if (hour >= 5 && hour < 12) return MoodSlot.morning;
+  // Evening: 5 PM to 11 PM (Post-duty/Pre-sleep reflection)
+  if (hour >= 17 && hour <= 23) return MoodSlot.evening;
+  return MoodSlot.none;
+}
+
+// Provider that holds today's MoodLog for the current slot if it exists
 final todayMoodProvider = StateNotifierProvider<MoodNotifier, MoodLog?>((ref) {
   final userId = ref.watch(authProvider).user?.id ?? '';
   return MoodNotifier(userId, ref);
@@ -35,16 +46,29 @@ class MoodNotifier extends StateNotifier<MoodLog?> {
   }
 
   void _init() {
-    // Check if there is a mood log for today
+    // Check if there is a mood log for the current active slot
     final now = DateTime.now();
-    final logs = HiveService.moodBox.values.where((log) =>
-        log.userId == userId &&
-        log.loggedAt.year == now.year &&
-        log.loggedAt.month == now.month &&
-        log.loggedAt.day == now.day);
+    final slot = getCurrentMoodSlot();
+    
+    // Fallback: If outside preferred slots, we check for ANY log today
+    // but prioritize the specific slot if we are in one.
+    final logs = HiveService.moodBox.values.where((log) {
+      if (log.userId != userId || 
+          log.loggedAt.year != now.year || 
+          log.loggedAt.month != now.month || 
+          log.loggedAt.day != now.day) return false;
+      
+      if (slot == MoodSlot.morning) {
+        return log.loggedAt.hour >= 5 && log.loggedAt.hour < 12;
+      } else if (slot == MoodSlot.evening) {
+        return log.loggedAt.hour >= 17 && log.loggedAt.hour <= 23;
+      }
+      
+      return true; // Outside slots, show any log for today
+    });
     
     if (logs.isNotEmpty) {
-      // Get the latest log if multiple exist (should just be 1 normally)
+      // Get the latest log for this slot/day
       state = logs.reduce((a, b) => a.loggedAt.isAfter(b.loggedAt) ? a : b);
     }
   }

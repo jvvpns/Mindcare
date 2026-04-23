@@ -8,6 +8,7 @@ import '../../core/constants/app_text_styles.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../core/providers/debug_provider.dart';
 import '../../core/providers/health_provider.dart';
+import '../../core/providers/notification_permission_provider.dart';
 import '../../shared/widgets/hilway_background.dart';
 import '../../shared/widgets/responsive_wrapper.dart';
 
@@ -94,10 +95,10 @@ class SettingsScreen extends ConsumerWidget {
                     icon: PhosphorIconsRegular.bell,
                     title: 'Notifications',
                     subtitle: 'Reminders for duty & reflection',
-                    onTap: () {},
+                    onTap: () => ref.read(notificationPermissionProvider.notifier).toggle(!ref.read(notificationPermissionProvider)),
                     trailing: Switch(
-                      value: true,
-                      onChanged: (val) {},
+                      value: ref.watch(notificationPermissionProvider),
+                      onChanged: (val) => ref.read(notificationPermissionProvider.notifier).toggle(val),
                       activeThumbColor: AppColors.primary,
                     ),
                   ),

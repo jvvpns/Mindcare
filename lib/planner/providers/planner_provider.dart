@@ -62,6 +62,45 @@ class PlannerNotifier extends StateNotifier<List<PlannerEntry>> {
     _refresh();
   }
 
+  Future<void> editTask({
+    required String id,
+    required String title,
+    required String category,
+    required DateTime dueDate,
+    DateTime? endTime,
+    int? reminderOffset,
+    String? description,
+  }) async {
+    final entry = _box?.get(id);
+    if (entry == null) return;
+
+    final updated = entry.copyWith(
+      title: title,
+      category: category,
+      dueDate: dueDate,
+      endTime: endTime,
+      reminderOffset: reminderOffset,
+      description: description,
+    );
+
+    await _box?.put(id, updated);
+    
+    // Update notifications: Cancel old one and schedule new one
+    await NotificationService.instance.cancelReminder(id);
+    if (!updated.isCompleted) {
+      await NotificationService.instance.scheduleTaskReminder(updated);
+    }
+
+    // Queue update for sync
+    SyncService.instance.queueUpsert(
+      table: 'planner_entries',
+      id: updated.id,
+      data: updated.toMap(),
+    );
+
+    _refresh();
+  }
+
   Future<void> toggleDone(String id) async {
     final entry = _box?.get(id);
     if (entry == null) return;

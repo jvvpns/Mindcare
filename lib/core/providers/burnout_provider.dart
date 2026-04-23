@@ -8,7 +8,7 @@ import '../services/intelligence_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../progress/providers/progress_provider.dart';
 import '../../planner/providers/planner_provider.dart';
-import '../../mood_tracking/providers/mood_provider.dart';
+import '../../self_assessment/providers/self_assessment_provider.dart';
 import '../../core/services/hive_service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -18,6 +18,7 @@ final burnoutRiskProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final todayMood = ref.watch(todayMoodProvider);
   final shiftTasks = ref.watch(shiftProvider);
   final refuelLog = ref.watch(refuelProvider);
+  final lastManual = ref.watch(lastAssessmentProvider);
   final userId = ref.watch(authProvider).user?.id ?? 'anonymous';
   
   // 1. Map mood to base stress level (1.0 - 5.0)
@@ -78,6 +79,21 @@ final burnoutRiskProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   };
 
   try {
+    // ── Pre-flight: Check for very recent manual assessment (last 4 hours) ──
+    // If a user just took a formal test, the Gauge should respect that 
+    // manual "clinical" data over the heuristic pulse.
+    if (lastManual != null) {
+      final hoursSince = DateTime.now().difference(lastManual.takenAt).inHours;
+      if (hoursSince < 4) {
+        return {
+          'level': _mapStringToLevel(lastManual.interpretation.split(' ').first),
+          'confidence': lastManual.totalScore,
+          'is_local': true,
+          'is_manual_override': true,
+        };
+      }
+    }
+
     final result = await IntelligenceService.instance.retry(() => 
       IntelligenceService.instance.predictBurnout(
         sleepHours: features['sleep_avg_hours'] as double,

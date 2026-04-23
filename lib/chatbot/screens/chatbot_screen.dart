@@ -129,7 +129,7 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
           children: [
             Text("To ensure Kelly can help all nursing students effectively, she has a limited amount of focus energy per day.", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4)),
             const SizedBox(height: 12),
-            Text("• You get 20 messages every day.\n• Her energy fully recharges at midnight.", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4)),
+            Text("• You get 20 messages per session.\n• Her energy fully recharges every 4 hours.", style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary, height: 1.4)),
           ],
         ),
         actions: [
@@ -180,6 +180,9 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     final energyRemaining = usage.messagesRemaining;
     final isEnergyLow = energyRemaining <= 3;
     final hasEnergy = energyRemaining > 0;
+    
+    // Can send if has energy AND Kelly isn't already busy
+    final canInteract = hasEnergy && !isLoading;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -396,7 +399,7 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
                 ),
               
                     // ── Input Area ──────────────────────────────────────────────────
-                    _buildInputArea(hasEnergy, energyRemaining, isEnergyLow),
+                    _buildInputArea(canInteract, energyRemaining, isEnergyLow, isLoading),
                   ],
                 ),
                 
@@ -493,7 +496,9 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
     );
   }
 
-  Widget _buildInputArea(bool hasEnergy, int energyRemaining, bool isEnergyLow) {
+  Widget _buildInputArea(bool canInteract, int energyRemaining, bool isEnergyLow, bool isLoading) {
+    final hasEnergy = energyRemaining > 0;
+    
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       decoration: BoxDecoration(
@@ -559,38 +564,42 @@ class _ChatbotScreenState extends ConsumerState<ChatbotScreen> {
               Expanded(
                 child: TextField(
                   controller: _messageController,
-                  enabled: hasEnergy,
+                  enabled: canInteract,
                   textCapitalization: TextCapitalization.sentences,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: hasEnergy ? AppColors.textPrimary : AppColors.textSecondary,
                   ),
                   decoration: InputDecoration(
-                    hintText: hasEnergy ? 'Message Kelly...' : 'Kelly is resting...',
+                    hintText: canInteract 
+                        ? 'Message Kelly...' 
+                        : (isLoading ? 'Kelly is thinking...' : 'Kelly is resting...'),
                     hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
                     filled: true,
-                    fillColor: hasEnergy ? AppColors.background : AppColors.surfaceSecondary,
+                    fillColor: canInteract ? AppColors.background : AppColors.surfaceSecondary,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onSubmitted: hasEnergy ? (_) => _sendMessage() : null,
+                  onSubmitted: canInteract ? (_) => _sendMessage() : null,
                 ),
               ),
               const SizedBox(width: 12),
               InkWell(
-                onTap: hasEnergy ? _sendMessage : null,
+                onTap: canInteract ? _sendMessage : null,
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: hasEnergy ? AppColors.primary : AppColors.borderLight,
+                    color: canInteract ? AppColors.primary : AppColors.borderLight,
                     shape: BoxShape.circle,
                   ),
                   child: PhosphorIcon(
-                    hasEnergy ? PhosphorIconsRegular.paperPlaneTilt : PhosphorIconsRegular.coffee, 
-                    color: hasEnergy ? Colors.white : AppColors.textTertiary, 
+                    isLoading 
+                        ? PhosphorIconsRegular.coffee 
+                        : (canInteract ? PhosphorIconsRegular.paperPlaneTilt : PhosphorIconsRegular.coffee), 
+                    color: canInteract ? Colors.white : AppColors.textTertiary, 
                     size: 20,
                   ),
                 ),

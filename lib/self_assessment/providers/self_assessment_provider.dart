@@ -133,7 +133,7 @@ final lastAssessmentProvider = Provider<AssessmentResult?>((ref) {
   return predictions.first;
 });
 
-/// Calculates the remaining cooldown time (24 hours).
+/// Calculates the remaining cooldown time (Resets at Midnight).
 final burnoutCooldownProvider = StreamProvider<Duration>((ref) async* {
   final lastResult = ref.watch(lastAssessmentProvider);
   if (lastResult == null) {
@@ -141,19 +141,22 @@ final burnoutCooldownProvider = StreamProvider<Duration>((ref) async* {
     return;
   }
 
-  const cooldownDuration = Duration(hours: 24);
-  
   while (true) {
     final now = DateTime.now();
-    final elapsed = now.difference(lastResult.takenAt);
-    final remaining = cooldownDuration - elapsed;
+    final isSameDay = lastResult.takenAt.year == now.year && 
+                      lastResult.takenAt.month == now.month && 
+                      lastResult.takenAt.day == now.day;
     
-    if (remaining.isNegative) {
+    if (!isSameDay) {
       yield Duration.zero;
       break;
     }
     
+    // Calculate time until midnight
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    final remaining = midnight.difference(now);
+    
     yield remaining;
-    await Future.delayed(const Duration(minutes: 1)); // Update every minute
+    await Future.delayed(const Duration(minutes: 1));
   }
 });
